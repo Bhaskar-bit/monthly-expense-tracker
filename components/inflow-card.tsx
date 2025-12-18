@@ -12,6 +12,7 @@ import { useMonthData } from "@/lib/hooks/use-month-data"
 import { mutate } from "swr"
 import { useMonth } from "@/lib/context/month-context"
 import { usePrivacyMask } from "@/lib/context/privacy-context"
+import { updateNextMonthCarryover } from "@/lib/utils/month-utils"
 
 export function InflowCard() {
   const { toast } = useToast()
@@ -47,6 +48,19 @@ export function InflowCard() {
         description: "Inflow updated successfully",
       })
       mutate(`month-${currentMonth}`)
+
+      await updateNextMonthCarryover(currentMonth)
+
+      // Calculate next month string for cache invalidation
+      const [year, month] = currentMonth.split("-").map(Number)
+      let nextMonth = month + 1
+      let nextYear = year
+      if (nextMonth > 12) {
+        nextMonth = 1
+        nextYear += 1
+      }
+      const nextMonthYear = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`
+      mutate(`month-${nextMonthYear}`)
     }
   }
 

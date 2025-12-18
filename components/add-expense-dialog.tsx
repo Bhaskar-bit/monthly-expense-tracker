@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from "@/lib/types"
 import { mutate } from "swr"
 import { useMonth } from "@/lib/context/month-context"
-import { ensureMonthExists } from "@/lib/utils/month-utils"
+import { ensureMonthExists, updateNextMonthCarryover } from "@/lib/utils/month-utils"
 
 export function AddExpenseDialog() {
   const { toast } = useToast()
@@ -75,6 +75,19 @@ export function AddExpenseDialog() {
 
       mutate(`expenses-${currentMonth}`)
       mutate(`month-${currentMonth}`)
+
+      await updateNextMonthCarryover(currentMonth)
+
+      // Calculate next month string for cache invalidation
+      const [year, month] = currentMonth.split("-").map(Number)
+      let nextMonth = month + 1
+      let nextYear = year
+      if (nextMonth > 12) {
+        nextMonth = 1
+        nextYear += 1
+      }
+      const nextMonthYear = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`
+      mutate(`month-${nextMonthYear}`)
     } catch (error) {
       console.error("[v0] Error adding expense:", error)
       toast({
