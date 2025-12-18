@@ -6,7 +6,7 @@ import { ExpenseList } from "@/components/expense-list"
 import { MonthlySummary } from "@/components/monthly-summary"
 import { AddExpenseDialog } from "@/components/add-expense-dialog"
 import { Button } from "@/components/ui/button"
-import { LogOut, Calendar } from "lucide-react"
+import { LogOut, Calendar, Plus } from "lucide-react"
 import { MonthProvider } from "@/lib/context/month-context"
 import Link from "next/link"
 import { PrivacyToggle } from "@/components/privacy-toggle"
@@ -23,50 +23,62 @@ export default async function DashboardPage() {
   return (
     <PrivacyProvider>
       <MonthProvider>
-        <div className="min-h-screen bg-background">
-          <header className="border-b">
-            <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold">Expense Tracker</h1>
-                <p className="text-sm text-muted-foreground">{data.user.email}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <PrivacyToggle />
-                <Link href="/yearly-summary">
-                  <Button variant="outline" size="sm">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Yearly Summary
-                  </Button>
-                </Link>
-                <form
-                  action={async () => {
-                    "use server"
-                    const supabase = await createClient()
-                    await supabase.auth.signOut()
-                    redirect("/auth/login")
-                  }}
-                >
-                  <Button variant="outline" size="sm" type="submit">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </Button>
-                </form>
+        <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+          <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+            <div className="container mx-auto px-4 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                    Expense Tracker
+                  </h1>
+                  <p className="text-sm text-muted-foreground">{data.user.email}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <PrivacyToggle />
+                  <Link href="/yearly-summary">
+                    <Button variant="outline" size="sm">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Yearly Summary
+                    </Button>
+                  </Link>
+                  <form
+                    action={async () => {
+                      "use server"
+                      const supabase = await createClient()
+                      await supabase.auth.signOut()
+                      redirect("/auth/login")
+                    }}
+                  >
+                    <Button variant="outline" size="sm" type="submit">
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </Button>
+                  </form>
+                </div>
               </div>
             </div>
           </header>
 
           <main className="container mx-auto px-4 py-8">
-            <div className="space-y-6">
+            <div className="space-y-8">
               <MonthSelector userId={data.user.id} />
 
-              <div className="grid gap-6 md:grid-cols-2">
+              <div className="grid gap-6 lg:grid-cols-2">
                 <InflowCard />
                 <MonthlySummary />
               </div>
 
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Expenses</h2>
-                <AddExpenseDialog />
+              <div className="flex items-center justify-between pt-4">
+                <div>
+                  <h2 className="text-2xl font-bold">Expense Timeline</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Track your daily spending</p>
+                </div>
+                <AddExpenseDialog>
+                  <Button size="lg" className="shadow-lg hover:shadow-xl transition-shadow">
+                    <Plus className="w-5 h-5 mr-2" />
+                    Add Expense
+                  </Button>
+                </AddExpenseDialog>
               </div>
 
               <ExpenseList />
