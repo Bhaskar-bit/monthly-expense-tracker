@@ -6,7 +6,7 @@ import { ExpenseList } from "@/components/expense-list"
 import { MonthlySummary } from "@/components/monthly-summary"
 import { AddExpenseDialog } from "@/components/add-expense-dialog"
 import { Button } from "@/components/ui/button"
-import { LogOut, Calendar, Plus } from "lucide-react"
+import { LogOut, Calendar, Plus, Target } from "lucide-react"
 import { MonthProvider } from "@/lib/context/month-context"
 import Link from "next/link"
 import { PrivacyToggle } from "@/components/privacy-toggle"
@@ -35,6 +35,12 @@ export default async function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <PrivacyToggle />
+                  <Link href="/savings-goals">
+                    <Button variant="outline" size="sm">
+                      <Target className="w-4 h-4 mr-2" />
+                      Savings Goals
+                    </Button>
+                  </Link>
                   <Link href="/yearly-summary">
                     <Button variant="outline" size="sm">
                       <Calendar className="w-4 h-4 mr-2" />

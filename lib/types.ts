@@ -29,7 +29,7 @@ export type ExpenseCategory =
   | "Quick Order Apps Expense"
   | "Shopping Apps Expense"
   | "Travel Expenses"
-  | "Credit card bills" // Added Credit card bills category
+  | "Credit card bills"
 
 export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   "Investments",
@@ -40,5 +40,36 @@ export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   "Quick Order Apps Expense",
   "Shopping Apps Expense",
   "Travel Expenses",
-  "Credit card bills", // Added Credit card bills to array
+  "Credit card bills",
 ]
+
+export interface SavingsGoal {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  target_amount: number
+  current_amount: number
+  monthly_allocation: number
+  allocation_percentage: number | null
+  goal_type: GoalType
+  status: GoalStatus
+  target_date: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type GoalType = "Short-term" | "Long-term" | "Emergency" | "Luxury"
+export type GoalStatus = "active" | "completed" | "archived"
+
+export interface GoalContribution {
+  id: string
+  user_id: string
+  goal_id: string
+  expense_id: string
+  amount: number
+  contribution_date: string
+  created_at: string
+}
+
+export const GOAL_TYPES: GoalType[] = ["Short-term", "Long-term", "Emergency", "Luxury"]
