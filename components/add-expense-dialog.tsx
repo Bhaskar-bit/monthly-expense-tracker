@@ -16,6 +16,7 @@ import { EXPENSE_CATEGORIES, type ExpenseCategory } from "@/lib/types"
 import { mutate } from "swr"
 import { useMonth } from "@/lib/context/month-context"
 import { ensureMonthExists, updateNextMonthCarryover } from "@/lib/utils/month-utils"
+import { fileService } from "@/lib/services/file-service"
 
 export function AddExpenseDialog() {
   const { toast } = useToast()
@@ -43,21 +44,11 @@ export function AddExpenseDialog() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
+    const validationResult = fileService.validateImageFile(file)
+    if (!validationResult.valid) {
       toast({
         title: "Error",
-        description: "Please upload an image file",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Error",
-        description: "Image size should be less than 5MB",
+        description: validationResult.error,
         variant: "destructive",
       })
       return
@@ -65,7 +56,10 @@ export function AddExpenseDialog() {
 
     try {
       setIsScanning(true)
-      const base64 = await fileToBase64(file)
+      let base64 = await fileToBase64(file)
+
+      base64 = await fileService.compressImage(base64, 1200, 1200)
+
       setUploadedImage(base64)
 
       // Call AI API to scan receipt

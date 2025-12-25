@@ -1,15 +1,31 @@
 import { generateText } from "ai"
 import { NextResponse } from "next/server"
+import { ReceiptScanSchema, ReceiptDataSchema } from "@/lib/schemas/expense-schema"
+import { validateInput } from "@/lib/utils/validation-helpers"
+import { checkRateLimit } from "@/lib/utils/rate-limit"
+import { auditService } from "@/lib/services/audit-service"
 
 export async function POST(request: Request) {
   try {
-    const { image } = await request.json()
+    const clientIp = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown"
+    const rateLimitKey = `receipt-scan-${clientIp}`
 
-    if (!image) {
-      return NextResponse.json({ error: "No image provided" }, { status: 400 })
+    if (!checkRateLimit(rateLimitKey, { maxRequests: 5, windowMs: 60 * 1000 })) {
+      return NextResponse.json(
+        { error: "Too many requests. Please wait before scanning another receipt." },
+        { status: 429 },
+      )
     }
 
-    // Use AI SDK with vision model to analyze the receipt
+    const body = await request.json()
+    const validationResult = validateInput(ReceiptScanSchema, body)
+
+    if (validationResult.error) {
+      return NextResponse.json({ error: validationResult.error }, { status: 400 })
+    }
+
+    const { image } = validationResult.data
+
     const { text } = await generateText({
       model: "openai/gpt-4o",
       messages: [
@@ -53,19 +69,41 @@ If you cannot extract information, respond with:
 
     console.log("[v0] AI Receipt analysis response:", text)
 
-    // Parse the AI response
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       return NextResponse.json({ error: "Failed to parse receipt" }, { status: 400 })
     }
 
-    const result = JSON.parse(jsonMatch[0])
+    const rawResult = JSON.parse(jsonMatch[0])
 
-    if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: 400 })
+    if (rawResult.error) {
+      return NextResponse.json({ error: rawResult.error }, { status: 400 })
     }
 
-    return NextResponse.json(result)
+    const dataValidationResult = validateInput(ReceiptDataSchema, rawResult)
+    if (dataValidationResult.error) {
+      return NextResponse.json({ error: `Invalid extracted data: ${dataValidationResult.error}` }, { status: 400 })
+    }
+
+    try {
+      await auditService.logAction(
+        {
+          entity_type: "expense",
+          entity_id: "receipt-scan-pending",
+          action: "create",
+          new_values: {
+            source: "receipt_scan",
+            extracted_data: dataValidationResult.data,
+          },
+        },
+        clientIp,
+        request.headers.get("user-agent") || undefined,
+      )
+    } catch (auditError) {
+      console.error("[v0] Failed to log audit entry:", auditError)
+    }
+
+    return NextResponse.json(dataValidationResult.data)
   } catch (error) {
     console.error("[v0] Receipt scanning error:", error)
     return NextResponse.json(
