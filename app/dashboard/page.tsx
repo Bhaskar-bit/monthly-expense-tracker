@@ -11,6 +11,7 @@ import { MonthProvider } from "@/lib/context/month-context"
 import Link from "next/link"
 import { PrivacyToggle } from "@/components/privacy-toggle"
 import { PrivacyProvider } from "@/lib/context/privacy-context"
+import { RecurringExpensesList } from "@/components/recurring-expenses-list"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -85,6 +86,10 @@ export default async function DashboardPage() {
                     Add Expense
                   </Button>
                 </AddExpenseDialog>
+              </div>
+
+              <div className="pt-4">
+                <RecurringExpensesList />
               </div>
 
               <ExpenseList />

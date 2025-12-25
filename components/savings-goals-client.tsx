@@ -12,6 +12,7 @@ import { AddGoalDialog } from "@/components/add-goal-dialog"
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import { InvestmentReturnsDialog } from "@/components/investment-returns-dialog"
 
 const goalTypeColors = {
   "Short-term": "bg-blue-500/10 text-blue-700 dark:text-blue-400",
@@ -253,6 +254,11 @@ export function SavingsGoalsClient({ userId }: SavingsGoalsClientProps) {
                           </p>
                         </div>
                       )}
+                    </div>
+
+                    {/* Investment Return Tracking Button */}
+                    <div className="flex gap-2 pt-2 border-t">
+                      <InvestmentReturnsDialog goalId={goal.id} onSuccess={() => {}} />
                     </div>
                   </CardContent>
                 </Card>

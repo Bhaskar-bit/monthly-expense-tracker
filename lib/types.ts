@@ -73,3 +73,33 @@ export interface GoalContribution {
 }
 
 export const GOAL_TYPES: GoalType[] = ["Short-term", "Long-term", "Emergency", "Luxury"]
+
+export interface RecurringExpense {
+  id: string
+  user_id: string
+  category: ExpenseCategory
+  amount: number
+  description: string | null
+  frequency: "monthly" | "quarterly" | "yearly"
+  start_date: string
+  end_date: string | null
+  day_of_month: number | null
+  last_created_date: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type RecurringFrequency = "monthly" | "quarterly" | "yearly"
+
+export interface InvestmentReturn {
+  id: string
+  user_id: string
+  goal_id: string
+  return_amount: number
+  return_date: string
+  return_source: "interest" | "dividend" | "capital_appreciation" | "manual_entry"
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
