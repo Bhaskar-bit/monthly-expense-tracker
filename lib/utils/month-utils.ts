@@ -1,24 +1,35 @@
 import { createClient } from "@/lib/supabase/client"
 
+function normalizeMonthYear(monthYear: string): string {
+  const [year, month] = monthYear.split("-").map(Number)
+  return `${year}-${String(month).padStart(2, "0")}-01`
+}
+
 export async function ensureMonthExists(monthYear: string) {
+  const normalizedMonthYear = normalizeMonthYear(monthYear)
+
   const supabase = createClient()
 
   const { data: userData } = await supabase.auth.getUser()
   if (!userData.user) throw new Error("Not authenticated")
 
-  // Check if month already exists
-  const { data: existingMonth } = await supabase
+  const { data: existingMonth, error: monthError } = await supabase
     .from("months")
     .select("*")
     .eq("user_id", userData.user.id)
-    .eq("month_year", monthYear)
-    .single()
+    .eq("month_year", normalizedMonthYear)
+    .maybeSingle()
+
+  if (monthError && monthError.code !== "PGRST116") {
+    console.error("[v0] Error fetching month:", monthError)
+    throw monthError
+  }
 
   if (existingMonth) {
     console.log("[v0] Month already exists:", existingMonth)
 
     // Calculate previous month
-    const [year, month] = monthYear.split("-").map(Number)
+    const [year, month] = normalizedMonthYear.split("-").map(Number)
     let prevMonth = month - 1
     let prevYear = year
 
@@ -29,13 +40,12 @@ export async function ensureMonthExists(monthYear: string) {
 
     const prevMonthYear = `${prevYear}-${String(prevMonth).padStart(2, "0")}-01`
 
-    // Get previous month's data
     const { data: prevMonthData } = await supabase
       .from("months")
       .select("*")
       .eq("user_id", userData.user.id)
       .eq("month_year", prevMonthYear)
-      .single()
+      .maybeSingle()
 
     if (prevMonthData) {
       console.log("[v0] Previous month found, calculating correct carryover...")
@@ -83,10 +93,10 @@ export async function ensureMonthExists(monthYear: string) {
   }
 
   // Month doesn't exist, create it with carryover from previous month
-  console.log("[v0] Creating new month with carryover:", monthYear)
+  console.log("[v0] Creating new month with carryover:", normalizedMonthYear)
 
   // Calculate previous month
-  const [year, month] = monthYear.split("-").map(Number)
+  const [year, month] = normalizedMonthYear.split("-").map(Number)
   let prevMonth = month - 1
   let prevYear = year
 
@@ -99,13 +109,12 @@ export async function ensureMonthExists(monthYear: string) {
 
   console.log("[v0] Looking for previous month:", prevMonthYear)
 
-  // Get previous month's data
   const { data: prevMonthData, error: prevMonthError } = await supabase
     .from("months")
     .select("*")
     .eq("user_id", userData.user.id)
     .eq("month_year", prevMonthYear)
-    .single()
+    .maybeSingle()
 
   console.log("[v0] Previous month query result:", { prevMonthData, prevMonthError })
 
@@ -143,7 +152,7 @@ export async function ensureMonthExists(monthYear: string) {
     .from("months")
     .insert({
       user_id: userData.user.id,
-      month_year: monthYear,
+      month_year: normalizedMonthYear,
       inflow: 0,
       carryover_from_previous: finalCarryover,
     })
@@ -158,19 +167,21 @@ export async function ensureMonthExists(monthYear: string) {
   console.log("[v0] Month created successfully:", newMonth)
 
   // Update next month's carryover
-  await updateNextMonthCarryover(monthYear)
+  await updateNextMonthCarryover(normalizedMonthYear)
 
   return newMonth
 }
 
 export async function updateNextMonthCarryover(currentMonthYear: string) {
+  const normalizedMonthYear = normalizeMonthYear(currentMonthYear)
+
   const supabase = createClient()
 
   const { data: userData } = await supabase.auth.getUser()
   if (!userData.user) return
 
   // Calculate next month
-  const [year, month] = currentMonthYear.split("-").map(Number)
+  const [year, month] = normalizedMonthYear.split("-").map(Number)
   let nextMonth = month + 1
   let nextYear = year
 
@@ -183,26 +194,24 @@ export async function updateNextMonthCarryover(currentMonthYear: string) {
 
   console.log("[v0] Checking if next month exists to update carryover:", nextMonthYear)
 
-  // Check if next month exists
   const { data: nextMonthData } = await supabase
     .from("months")
     .select("*")
     .eq("user_id", userData.user.id)
     .eq("month_year", nextMonthYear)
-    .single()
+    .maybeSingle()
 
   if (!nextMonthData) {
     console.log("[v0] Next month doesn't exist yet, no update needed")
     return
   }
 
-  // Get current month's data
   const { data: currentMonthData } = await supabase
     .from("months")
     .select("*")
     .eq("user_id", userData.user.id)
-    .eq("month_year", currentMonthYear)
-    .single()
+    .eq("month_year", normalizedMonthYear)
+    .maybeSingle()
 
   if (!currentMonthData) {
     console.log("[v0] Current month not found")
@@ -217,7 +226,7 @@ export async function updateNextMonthCarryover(currentMonthYear: string) {
   const newCarryover = Math.max(0, currentTotalAvailable - totalExpenses)
 
   console.log("[v0] Updating next month carryover:", {
-    currentMonth: currentMonthYear,
+    currentMonth: normalizedMonthYear,
     nextMonth: nextMonthYear,
     currentInflow: currentMonthData.inflow,
     currentCarryover: currentMonthData.carryover_from_previous,

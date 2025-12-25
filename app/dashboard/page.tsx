@@ -6,7 +6,7 @@ import { ExpenseList } from "@/components/expense-list"
 import { MonthlySummary } from "@/components/monthly-summary"
 import { AddExpenseDialog } from "@/components/add-expense-dialog"
 import { Button } from "@/components/ui/button"
-import { LogOut, Calendar, Plus, Target } from "lucide-react"
+import { LogOut, Calendar, Plus, Target, TrendingUp, Settings, Download } from "lucide-react"
 import { MonthProvider } from "@/lib/context/month-context"
 import Link from "next/link"
 import { PrivacyToggle } from "@/components/privacy-toggle"
@@ -34,18 +34,36 @@ export default async function DashboardPage() {
                   </h1>
                   <p className="text-sm text-muted-foreground">{data.user.email}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <PrivacyToggle />
+                  <Link href="/insights">
+                    <Button variant="outline" size="sm">
+                      <TrendingUp className="w-4 h-4 mr-2" />
+                      Insights
+                    </Button>
+                  </Link>
+                  <Link href="/budgets">
+                    <Button variant="outline" size="sm">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Budgets
+                    </Button>
+                  </Link>
+                  <Link href="/export">
+                    <Button variant="outline" size="sm">
+                      <Download className="w-4 h-4 mr-2" />
+                      Export
+                    </Button>
+                  </Link>
                   <Link href="/savings-goals">
                     <Button variant="outline" size="sm">
                       <Target className="w-4 h-4 mr-2" />
-                      Savings Goals
+                      Goals
                     </Button>
                   </Link>
                   <Link href="/yearly-summary">
                     <Button variant="outline" size="sm">
                       <Calendar className="w-4 h-4 mr-2" />
-                      Yearly Summary
+                      Yearly
                     </Button>
                   </Link>
                   <form
