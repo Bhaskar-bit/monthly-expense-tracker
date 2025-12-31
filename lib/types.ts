@@ -30,6 +30,7 @@ export type ExpenseCategory =
   | "Shopping Apps Expense"
   | "Travel Expenses"
   | "Credit card bills"
+  | "Miscellaneous"
 
 export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   "Investments",
@@ -41,6 +42,7 @@ export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   "Shopping Apps Expense",
   "Travel Expenses",
   "Credit card bills",
+  "Miscellaneous",
 ]
 
 export interface SavingsGoal {

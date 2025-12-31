@@ -46,6 +46,11 @@ export const CATEGORY_COLORS: Record<ExpenseCategory, { bg: string; text: string
     text: "text-rose-700 dark:text-rose-400",
     border: "border-rose-200 dark:border-rose-800",
   },
+  Miscellaneous: {
+    bg: "bg-gray-50 dark:bg-gray-950/30",
+    text: "text-gray-700 dark:text-gray-400",
+    border: "border-gray-200 dark:border-gray-800",
+  },
 }
 
 export function getCategoryColor(category: ExpenseCategory) {

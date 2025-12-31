@@ -28,6 +28,8 @@ export function MonthlySummary() {
   const totalAvailable = monthData ? Number(monthData.inflow) + Number(monthData.carryover_from_previous) : 0
   const remaining = totalAvailable - totalExpenses
 
+  const categoriesWithExpenses = EXPENSE_CATEGORIES.filter((cat) => (categoryTotals[cat] || 0) > 0)
+
   return (
     <Card
       className="shadow-lg border-0 bg-gradient-to-br from-card to-card/80"
@@ -70,39 +72,42 @@ export function MonthlySummary() {
           )}
         </div>
 
-        <div className="pt-4 border-t space-y-3">
-          <h3 className="text-sm font-semibold">Expenses by Category</h3>
-          <div className="space-y-3 max-h-72 overflow-y-auto">
-            {EXPENSE_CATEGORIES.map((category) => {
-              const amount = categoryTotals[category] || 0
-              const percentage = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
-              const colors = getCategoryColor(category)
+        {categoriesWithExpenses.length > 0 && (
+          <div className="pt-4 border-t space-y-4">
+            <h3 className="text-sm font-semibold">Expenses by Category</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {categoriesWithExpenses.map((category) => {
+                const amount = categoryTotals[category] || 0
+                const percentage = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
+                const colors = getCategoryColor(category)
 
-              if (amount === 0) return null
-
-              return (
-                <div key={category} className="space-y-1.5">
-                  <div className="flex justify-between items-center text-sm gap-2">
-                    <span className={`font-medium truncate ${colors.text}`}>{category}</span>
-                    <span className="font-semibold flex-shrink-0">₹{amount.toFixed(2)}</span>
+                return (
+                  <div
+                    key={category}
+                    className="p-3 rounded-lg border border-muted/40 bg-muted/30 hover:bg-muted/50 transition-colors space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className={`font-medium text-sm line-clamp-2 ${colors.text}`}>{category}</span>
+                      <span className="font-semibold text-sm flex-shrink-0">₹{amount.toFixed(2)}</span>
+                    </div>
+                    <div className="relative h-2 bg-muted/50 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${colors.bg} border-r-2 ${colors.border} transition-all duration-500`}
+                        style={{ width: `${percentage}%` }}
+                        role="progressbar"
+                        aria-valuenow={Math.round(percentage)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${category}: ${percentage.toFixed(1)}%`}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground text-right">{percentage.toFixed(1)}%</p>
                   </div>
-                  <div className="relative h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${colors.bg} border-r-2 ${colors.border} transition-all duration-500`}
-                      style={{ width: `${percentage}%` }}
-                      role="progressbar"
-                      aria-valuenow={Math.round(percentage)}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-label={`${category}: ${percentage.toFixed(1)}%`}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">{percentage.toFixed(1)}% of total</p>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   )

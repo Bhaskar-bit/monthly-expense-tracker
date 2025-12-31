@@ -3,75 +3,78 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Fresh minimal fintech design system inspired by Wise, Mercury, Stripe */
 :root {
-  --background: oklch(0.99 0.005 240);
-  --foreground: oklch(0.18 0.02 240);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 240);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 240);
-  --primary: oklch(0.55 0.15 220);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.97 0.01 240);
-  --secondary-foreground: oklch(0.25 0.02 240);
-  --muted: oklch(0.96 0.01 240);
-  --muted-foreground: oklch(0.52 0.015 240);
-  --accent: oklch(0.95 0.02 200);
-  --accent-foreground: oklch(0.25 0.02 240);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.93 0.01 240);
-  --input: oklch(0.93 0.01 240);
-  --ring: oklch(0.55 0.15 220);
-  --chart-1: oklch(0.65 0.18 220);
-  --chart-2: oklch(0.7 0.15 280);
-  --chart-3: oklch(0.6 0.2 160);
-  --chart-4: oklch(0.75 0.15 40);
-  --chart-5: oklch(0.68 0.18 320);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.18 0.02 240);
-  --sidebar-primary: oklch(0.55 0.15 220);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.96 0.01 240);
-  --sidebar-accent-foreground: oklch(0.25 0.02 240);
-  --sidebar-border: oklch(0.93 0.01 240);
-  --sidebar-ring: oklch(0.55 0.15 220);
+  /* Light mode - Clean and minimal */
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --card: #f8f9fb;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: #0052cc;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f2f5;
+  --secondary-foreground: #1a1a1a;
+  --muted: #aeaeae;
+  --muted-foreground: #6b6b6b;
+  --accent: #00d084;
+  --accent-foreground: #ffffff;
+  --destructive: #e63946;
+  --destructive-foreground: #ffffff;
+  --border: #e5e7eb;
+  --input: #f3f4f6;
+  --ring: #0052cc;
+  --chart-1: #0052cc;
+  --chart-2: #00d084;
+  --chart-3: #f59e0b;
+  --chart-4: #06b6d4;
+  --chart-5: #8b5cf6;
+  --radius: 0.5rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-primary: #0052cc;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0f2f5;
+  --sidebar-accent-foreground: #1a1a1a;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #0052cc;
 }
 
 .dark {
-  --background: oklch(0.14 0.015 240);
-  --foreground: oklch(0.97 0.005 240);
-  --card: oklch(0.17 0.015 240);
-  --card-foreground: oklch(0.97 0.005 240);
-  --popover: oklch(0.17 0.015 240);
-  --popover-foreground: oklch(0.97 0.005 240);
-  --primary: oklch(0.62 0.18 220);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.22 0.015 240);
-  --secondary-foreground: oklch(0.97 0.005 240);
-  --muted: oklch(0.22 0.015 240);
-  --muted-foreground: oklch(0.65 0.01 240);
-  --accent: oklch(0.24 0.02 220);
-  --accent-foreground: oklch(0.97 0.005 240);
-  --destructive: oklch(0.55 0.22 27);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.24 0.015 240);
-  --input: oklch(0.24 0.015 240);
-  --ring: oklch(0.62 0.18 220);
-  --chart-1: oklch(0.65 0.18 220);
-  --chart-2: oklch(0.7 0.15 280);
-  --chart-3: oklch(0.6 0.2 160);
-  --chart-4: oklch(0.75 0.15 40);
-  --chart-5: oklch(0.68 0.18 320);
-  --sidebar: oklch(0.17 0.015 240);
-  --sidebar-foreground: oklch(0.97 0.005 240);
-  --sidebar-primary: oklch(0.62 0.18 220);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.22 0.015 240);
-  --sidebar-accent-foreground: oklch(0.97 0.005 240);
-  --sidebar-border: oklch(0.24 0.015 240);
-  --sidebar-ring: oklch(0.62 0.18 220);
+  /* Dark mode - Sophisticated with high contrast */
+  --background: #0f1117;
+  --foreground: #e6edf3;
+  --card: #161b22;
+  --card-foreground: #e6edf3;
+  --popover: #0d1117;
+  --popover-foreground: #e6edf3;
+  --primary: #58a6ff;
+  --primary-foreground: #0f1117;
+  --secondary: #21262d;
+  --secondary-foreground: #e6edf3;
+  --muted: #6e7681;
+  --muted-foreground: #8b949e;
+  --accent: #3fb950;
+  --accent-foreground: #0f1117;
+  --destructive: #f85149;
+  --destructive-foreground: #0f1117;
+  --border: #30363d;
+  --input: #0d1117;
+  --ring: #58a6ff;
+  --chart-1: #58a6ff;
+  --chart-2: #3fb950;
+  --chart-3: #d29922;
+  --chart-4: #79c0ff;
+  --chart-5: #d2a8ff;
+  --sidebar: #161b22;
+  --sidebar-foreground: #e6edf3;
+  --sidebar-primary: #58a6ff;
+  --sidebar-primary-foreground: #0f1117;
+  --sidebar-accent: #21262d;
+  --sidebar-accent-foreground: #e6edf3;
+  --sidebar-border: #30363d;
+  --sidebar-ring: #58a6ff;
 }
 
 @theme inline {
@@ -101,10 +104,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -119,7 +122,46 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Smooth transitions for theme switching */
+  html,
+  body,
+  * {
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+
+  /* Minimal, clean card design */
+  .card {
+    @apply bg-card text-card-foreground border border-border rounded-md;
+  }
+}
+
+@layer components {
+  /* Subtle shadow for depth without overdoing it */
+  .shadow-sm {
+    @apply shadow-sm;
+  }
+
+  /* Clean button styling */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90 transition-opacity;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground px-4 py-2 rounded-md border border-border hover:bg-secondary/80 transition-colors;
+  }
+
+  /* Clean input styling */
+  .input-clean {
+    @apply w-full px-3 py-2 rounded-md border border-border bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary;
   }
 }

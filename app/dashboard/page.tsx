@@ -13,6 +13,7 @@ import { PrivacyToggle } from "@/components/privacy-toggle"
 import { PrivacyProvider } from "@/lib/context/privacy-context"
 import { RecurringExpensesList } from "@/components/recurring-expenses-list"
 import { MobileNav } from "@/components/mobile-nav"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -25,19 +26,18 @@ export default async function DashboardPage() {
   return (
     <PrivacyProvider>
       <MonthProvider>
-        <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-          <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 dark:to-accent/10">
+          <header className="bg-card border-b sticky top-0 z-10">
             <div className="container mx-auto px-4 py-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent truncate">
-                    Expense Tracker
-                  </h1>
+                  <h1 className="text-xl sm:text-2xl font-bold gradient-text truncate">Expense Tracker</h1>
                   <p className="text-xs sm:text-sm text-muted-foreground truncate">{data.user.email}</p>
                 </div>
 
                 {/* Desktop Navigation */}
                 <nav className="hidden md:flex items-center gap-2 flex-wrap">
+                  <ThemeToggle />
                   <PrivacyToggle />
                   <Link href="/insights" aria-label="View spending insights">
                     <Button variant="outline" size="sm">
@@ -85,7 +85,8 @@ export default async function DashboardPage() {
                 </nav>
 
                 {/* Mobile Navigation */}
-                <div className="md:hidden">
+                <div className="md:hidden flex items-center gap-2">
+                  <ThemeToggle />
                   <MobileNav userEmail={data.user.email} />
                 </div>
               </div>

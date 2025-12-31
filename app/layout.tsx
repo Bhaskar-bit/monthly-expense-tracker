@@ -37,8 +37,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#f8f9ff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f0f1a" },
   ],
 }
 
@@ -48,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`}>
         {children}
         <Toaster />

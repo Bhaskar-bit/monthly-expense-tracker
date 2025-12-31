@@ -2,14 +2,19 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import { ArrowRight, TrendingDown, Calculator, PiggyBank } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle" // Changed from default to named import
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="min-h-screen bg-gradient-to-b from-background via-accent/5 to-background dark:to-background">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <div className="space-y-4">
-            <h1 className="text-5xl font-bold tracking-tight">Monthly Expense Tracker</h1>
+            <h1 className="text-5xl font-bold tracking-tight gradient-text">Monthly Expense Tracker</h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Track your monthly income, manage expenses across categories, and watch your savings grow month after
               month.
@@ -77,7 +82,7 @@ export default function HomePage() {
                 "Quick Order Apps Expense",
                 "Shopping Apps Expense",
                 "Travel Expenses",
-                "Credit card bills", // Added Credit card bills category
+                "Credit card bills",
               ].map((category) => (
                 <div key={category} className="px-4 py-2 rounded-full bg-muted text-sm font-medium">
                   {category}
