@@ -65,9 +65,15 @@ export function ExpenseList() {
   if (expenses.length === 0) {
     return (
       <Card className="border-2 border-dashed">
-        <div className="py-12 text-center">
+        <div className="py-12 text-center px-4">
           <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
-            <svg className="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-6 h-6 text-muted-foreground"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
           </div>
@@ -81,67 +87,71 @@ export function ExpenseList() {
   const groupedExpenses = groupExpensesByDate(expenses)
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8" role="region" aria-label="Expense list">
       {groupedExpenses.map(([date, dateExpenses]) => {
         const dateObj = new Date(date + "T00:00:00")
         const dayTotal = dateExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
+        const formattedDate = dateObj.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
 
         return (
           <div key={date} className="relative">
-            <div className="flex items-center gap-4 mb-4">
+            <div className="flex gap-3 sm:gap-4 mb-4">
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex flex-col items-center justify-center border border-primary/20">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-primary/10 flex flex-col items-center justify-center border border-primary/20">
                   <span className="text-xs font-medium text-primary">
                     {dateObj.toLocaleDateString("en-US", { month: "short" })}
                   </span>
-                  <span className="text-lg font-bold text-primary">
+                  <span className="text-lg sm:text-xl font-bold text-primary">
                     {dateObj.toLocaleDateString("en-US", { day: "numeric" })}
                   </span>
                 </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-foreground">
-                  {dateObj.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-                </h3>
-                <p className="text-sm text-muted-foreground">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-foreground text-sm sm:text-base">{formattedDate}</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   {dateExpenses.length} {dateExpenses.length === 1 ? "expense" : "expenses"} • ₹{dayTotal.toFixed(2)}
                 </p>
               </div>
             </div>
 
-            <div className="space-y-3 ml-16">
+            <div className="space-y-3 ps-2 sm:ps-0">
               {dateExpenses.map((expense) => {
                 const colors = getCategoryColor(expense.category)
                 return (
                   <Card
                     key={expense.id}
                     className={`group hover:shadow-md transition-all duration-200 border-l-4 ${colors.border}`}
+                    role="article"
+                    aria-label={`${expense.category} expense of ₹${Number(expense.amount).toFixed(2)}`}
                   >
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-2">
+                    <div className="p-3 sm:p-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3 sm:gap-4">
+                        <div className="flex-1 space-y-2 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span
-                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}
+                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${colors.bg} ${colors.text}`}
                             >
                               {expense.category}
                             </span>
                           </div>
                           {expense.description && (
-                            <p className="text-sm text-foreground font-medium">{expense.description}</p>
+                            <p className="text-sm text-foreground font-medium break-words">{expense.description}</p>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 self-end sm:self-start">
                           <div className="text-right">
-                            <p className="text-xl font-bold text-foreground">₹{Number(expense.amount).toFixed(2)}</p>
+                            <p className="text-lg sm:text-xl font-bold text-foreground">
+                              ₹{Number(expense.amount).toFixed(2)}
+                            </p>
                           </div>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(expense.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-9 w-9 sm:h-10 sm:w-10 focus:opacity-100"
+                            aria-label={`Delete expense for ₹${Number(expense.amount).toFixed(2)}`}
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <Trash2 className="h-4 w-4 text-destructive" aria-hidden="true" />
                           </Button>
                         </div>
                       </div>

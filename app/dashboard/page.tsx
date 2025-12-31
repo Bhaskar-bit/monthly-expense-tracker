@@ -12,6 +12,7 @@ import Link from "next/link"
 import { PrivacyToggle } from "@/components/privacy-toggle"
 import { PrivacyProvider } from "@/lib/context/privacy-context"
 import { RecurringExpensesList } from "@/components/recurring-expenses-list"
+import { MobileNav } from "@/components/mobile-nav"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -27,43 +28,45 @@ export default async function DashboardPage() {
         <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
           <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
             <div className="container mx-auto px-4 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent truncate">
                     Expense Tracker
                   </h1>
-                  <p className="text-sm text-muted-foreground">{data.user.email}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">{data.user.email}</p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
+
+                {/* Desktop Navigation */}
+                <nav className="hidden md:flex items-center gap-2 flex-wrap">
                   <PrivacyToggle />
-                  <Link href="/insights">
+                  <Link href="/insights" aria-label="View spending insights">
                     <Button variant="outline" size="sm">
-                      <TrendingUp className="w-4 h-4 mr-2" />
-                      Insights
+                      <TrendingUp className="w-4 h-4 mr-2" aria-hidden="true" />
+                      <span className="hidden lg:inline">Insights</span>
                     </Button>
                   </Link>
-                  <Link href="/budgets">
+                  <Link href="/budgets" aria-label="Manage budgets">
                     <Button variant="outline" size="sm">
-                      <Settings className="w-4 h-4 mr-2" />
-                      Budgets
+                      <Settings className="w-4 h-4 mr-2" aria-hidden="true" />
+                      <span className="hidden lg:inline">Budgets</span>
                     </Button>
                   </Link>
-                  <Link href="/export">
+                  <Link href="/export" aria-label="Export reports">
                     <Button variant="outline" size="sm">
-                      <Download className="w-4 h-4 mr-2" />
-                      Export
+                      <Download className="w-4 h-4 mr-2" aria-hidden="true" />
+                      <span className="hidden lg:inline">Export</span>
                     </Button>
                   </Link>
-                  <Link href="/savings-goals">
+                  <Link href="/savings-goals" aria-label="View savings goals">
                     <Button variant="outline" size="sm">
-                      <Target className="w-4 h-4 mr-2" />
-                      Goals
+                      <Target className="w-4 h-4 mr-2" aria-hidden="true" />
+                      <span className="hidden lg:inline">Goals</span>
                     </Button>
                   </Link>
-                  <Link href="/yearly-summary">
+                  <Link href="/yearly-summary" aria-label="View yearly summary">
                     <Button variant="outline" size="sm">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Yearly
+                      <Calendar className="w-4 h-4 mr-2" aria-hidden="true" />
+                      <span className="hidden lg:inline">Yearly</span>
                     </Button>
                   </Link>
                   <form
@@ -75,32 +78,41 @@ export default async function DashboardPage() {
                     }}
                   >
                     <Button variant="outline" size="sm" type="submit">
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Logout
+                      <LogOut className="w-4 h-4 mr-2" aria-hidden="true" />
+                      <span className="hidden lg:inline">Logout</span>
                     </Button>
                   </form>
+                </nav>
+
+                {/* Mobile Navigation */}
+                <div className="md:hidden">
+                  <MobileNav userEmail={data.user.email} />
                 </div>
               </div>
             </div>
           </header>
 
-          <main className="container mx-auto px-4 py-8">
-            <div className="space-y-8">
+          <main className="container mx-auto px-4 py-6 sm:py-8">
+            <div className="space-y-6 sm:space-y-8">
               <MonthSelector userId={data.user.id} />
 
-              <div className="grid gap-6 lg:grid-cols-2">
-                <InflowCard />
-                <MonthlySummary />
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="min-w-0">
+                  <InflowCard />
+                </div>
+                <div className="min-w-0">
+                  <MonthlySummary />
+                </div>
               </div>
 
-              <div className="flex items-center justify-between pt-4">
-                <div>
-                  <h2 className="text-2xl font-bold">Expense Timeline</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Track your daily spending</p>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4">
+                <div className="min-w-0">
+                  <h2 className="text-xl sm:text-2xl font-bold">Expense Timeline</h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">Track your daily spending</p>
                 </div>
                 <AddExpenseDialog>
-                  <Button size="lg" className="shadow-lg hover:shadow-xl transition-shadow">
-                    <Plus className="w-5 h-5 mr-2" />
+                  <Button size="lg" className="shadow-lg hover:shadow-xl transition-shadow w-full sm:w-auto">
+                    <Plus className="w-5 h-5 mr-2" aria-hidden="true" />
                     Add Expense
                   </Button>
                 </AddExpenseDialog>
