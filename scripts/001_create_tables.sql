@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS expenses (
     'Food Apps Expense',
     'Quick Order Apps Expense',
     'Shopping Apps Expense',
-    'Travel Expenses'
+    'Travel Expenses',
+    'Miscellaneous'
   )),
   amount DECIMAL(10, 2) NOT NULL,
   description TEXT,

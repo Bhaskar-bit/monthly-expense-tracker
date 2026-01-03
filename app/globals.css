@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "tw-animate-css";
+/* Removed problematic tw-animate-css import that was causing CSS parsing errors with undefined slide-out-to-start utilities */
 
 @custom-variant dark (&:is(.dark *));
 
@@ -146,6 +146,8 @@
 }
 
 @layer components {
+  /* Removed problematic slide-out utilities that were causing CSS errors */
+
   /* Subtle shadow for depth without overdoing it */
   .shadow-sm {
     @apply shadow-sm;

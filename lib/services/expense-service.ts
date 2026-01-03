@@ -1,9 +1,10 @@
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
 import type { Expense, ExpenseCategory } from "@/lib/types"
 import { CreateExpenseSchema } from "@/lib/schemas/expense-schema"
 import { validateInputStrict } from "@/lib/utils/validation-helpers"
 import type { PaginatedResult } from "@/lib/utils/pagination"
 import { calculateOffset, createPaginatedResult, validatePaginationParams } from "@/lib/utils/pagination"
+import { goalContributionServerService } from "./goal-contribution-server"
 
 interface CreateExpenseServiceInput {
   month_id: string
@@ -23,10 +24,16 @@ interface UpdateExpenseInput {
 
 export const expenseService = {
   async createExpense(input: CreateExpenseServiceInput): Promise<Expense> {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: userData } = await supabase.auth.getUser()
 
     if (!userData.user) throw new Error("Not authenticated")
+
+    console.log("[v0] Creating expense with input:", {
+      category: input.category,
+      amount: input.amount,
+      expense_date: input.expense_date,
+    })
 
     validateInputStrict(CreateExpenseSchema, {
       category: input.category,
@@ -39,17 +46,37 @@ export const expenseService = {
       .from("expenses")
       .insert({
         user_id: userData.user.id,
-        ...input,
+        month_id: input.month_id,
+        category: input.category,
+        amount: input.amount,
+        description: input.description,
+        expense_date: input.expense_date,
       })
       .select()
       .single()
 
     if (error) throw error
+
+    if (input.category === "Investments" && data.id) {
+      console.log(`[v0] Investment expense created: ₹${input.amount}, distributing to goals asynchronously...`)
+      // Non-blocking distribution - don't await or throw errors
+      goalContributionServerService
+        .distributeInvestmentToGoals({
+          expense_id: data.id,
+          amount: input.amount,
+          contribution_date: input.expense_date,
+          user_id: userData.user.id,
+        })
+        .catch((err) => {
+          console.error("[v0] Background: Error distributing investment to goals:", err)
+        })
+    }
+
     return data
   },
 
   async getExpensesByMonth(monthId: string): Promise<Expense[]> {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: userData } = await supabase.auth.getUser()
 
     if (!userData.user) throw new Error("Not authenticated")
@@ -66,7 +93,7 @@ export const expenseService = {
   },
 
   async deleteExpense(expenseId: string): Promise<void> {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: userData } = await supabase.auth.getUser()
 
     if (!userData.user) throw new Error("Not authenticated")
@@ -84,7 +111,7 @@ export const expenseService = {
   },
 
   async updateExpense(input: UpdateExpenseInput): Promise<Expense> {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: userData } = await supabase.auth.getUser()
 
     if (!userData.user) throw new Error("Not authenticated")
@@ -105,7 +132,7 @@ export const expenseService = {
   },
 
   async getExpensesByMonthPaginated(monthId: string, page = 1, pageSize = 20): Promise<PaginatedResult<Expense>> {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: userData } = await supabase.auth.getUser()
 
     if (!userData.user) throw new Error("Not authenticated")
@@ -135,7 +162,7 @@ export const expenseService = {
   },
 
   async getExpensesByYearPaginated(year: number, page = 1, pageSize = 50): Promise<PaginatedResult<Expense>> {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: userData } = await supabase.auth.getUser()
 
     if (!userData.user) throw new Error("Not authenticated")

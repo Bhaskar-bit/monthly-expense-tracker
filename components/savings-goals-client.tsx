@@ -1,18 +1,30 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
-import type { SavingsGoal } from "@/lib/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Plus, Target, TrendingUp, Wallet, Calendar, MoreVertical, Edit2, Archive, Trash2 } from "lucide-react"
+import {
+  Plus,
+  Target,
+  TrendingUp,
+  Wallet,
+  Calendar,
+  MoreVertical,
+  Edit2,
+  Archive,
+  Trash2,
+  ArrowUpRight,
+} from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { AddGoalDialog } from "@/components/add-goal-dialog"
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { InvestmentReturnsDialog } from "@/components/investment-returns-dialog"
+import { useSavingsGoalsData } from "@/lib/hooks/use-savings-goals-data"
+import type { GoalContribution } from "@/lib/types"
 
 const goalTypeColors = {
   "Short-term": "bg-blue-500/10 text-blue-700 dark:text-blue-400",
@@ -33,41 +45,68 @@ interface SavingsGoalsClientProps {
 }
 
 export function SavingsGoalsClient({ userId }: SavingsGoalsClientProps) {
-  const [goals, setGoals] = useState<SavingsGoal[]>([])
-  const [loading, setLoading] = useState(true)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const supabase = createClient()
+  const [goalContributions, setGoalContributions] = useState<Record<string, GoalContribution[]>>({})
+  const { goals, isLoading, mutate } = useSavingsGoalsData()
 
   useEffect(() => {
-    fetchGoals()
-  }, [userId])
-
-  async function fetchGoals() {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from("savings_goals")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-
-      if (error) throw error
-      setGoals(data || [])
-    } catch (error) {
-      console.error("Error fetching goals:", error)
-      toast.error("Failed to load savings goals")
-    } finally {
-      setLoading(false)
+    if (goals.length === 0) {
+      setGoalContributions({})
+      return
     }
-  }
+
+    let isMounted = true
+
+    const fetchContributions = async () => {
+      try {
+        const supabase = createClient()
+        const contributions: Record<string, GoalContribution[]> = {}
+
+        for (const goal of goals) {
+          if (!isMounted) return
+
+          try {
+            const { data, error } = await supabase
+              .from("goal_contributions")
+              .select("*")
+              .eq("goal_id", goal.id)
+              .order("contribution_date", { ascending: false })
+
+            if (error) {
+              console.error(`[v0] Failed to fetch contributions for goal ${goal.id}:`, error)
+              continue
+            }
+
+            contributions[goal.id] = data || []
+          } catch (error) {
+            console.error(`[v0] Error fetching contributions for goal ${goal.id}:`, error)
+          }
+        }
+
+        if (isMounted) {
+          setGoalContributions(contributions)
+        }
+      } catch (error) {
+        console.error("[v0] Error in fetchContributions:", error)
+      }
+    }
+
+    fetchContributions()
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false
+    }
+  }, [goals.map((g) => g.id).join(",")])
 
   async function archiveGoal(goalId: string) {
     try {
+      const supabase = createClient()
       const { error } = await supabase.from("savings_goals").update({ status: "archived" }).eq("id", goalId)
 
       if (error) throw error
       toast.success("Goal archived successfully")
-      fetchGoals()
+      mutate()
     } catch (error) {
       console.error("Error archiving goal:", error)
       toast.error("Failed to archive goal")
@@ -76,11 +115,12 @@ export function SavingsGoalsClient({ userId }: SavingsGoalsClientProps) {
 
   async function deleteGoal(goalId: string) {
     try {
+      const supabase = createClient()
       const { error } = await supabase.from("savings_goals").delete().eq("id", goalId)
 
       if (error) throw error
       toast.success("Goal deleted successfully")
-      fetchGoals()
+      mutate()
     } catch (error) {
       console.error("Error deleting goal:", error)
       toast.error("Failed to delete goal")
@@ -95,7 +135,7 @@ export function SavingsGoalsClient({ userId }: SavingsGoalsClientProps) {
   const totalCurrentAmount = activeGoals.reduce((sum, goal) => sum + goal.current_amount, 0)
   const totalMonthlyAllocation = activeGoals.reduce((sum, goal) => sum + goal.monthly_allocation, 0)
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -150,7 +190,7 @@ export function SavingsGoalsClient({ userId }: SavingsGoalsClientProps) {
             <h2 className="text-2xl font-bold">Active Goals</h2>
             <p className="text-sm text-muted-foreground mt-1">Track your progress toward financial goals</p>
           </div>
-          <AddGoalDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onSuccess={fetchGoals}>
+          <AddGoalDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onSuccess={() => mutate()}>
             <Button size="lg" className="shadow-lg hover:shadow-xl transition-shadow">
               <Plus className="w-5 h-5 mr-2" />
               Add Goal
@@ -166,7 +206,7 @@ export function SavingsGoalsClient({ userId }: SavingsGoalsClientProps) {
               <p className="text-sm text-muted-foreground text-center mb-4">
                 Create your first savings goal to start tracking your progress
               </p>
-              <AddGoalDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onSuccess={fetchGoals}>
+              <AddGoalDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onSuccess={() => mutate()}>
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Your First Goal
@@ -181,6 +221,8 @@ export function SavingsGoalsClient({ userId }: SavingsGoalsClientProps) {
               const remaining = goal.target_amount - goal.current_amount
               const monthsToGoal = goal.monthly_allocation > 0 ? Math.ceil(remaining / goal.monthly_allocation) : null
               const Icon = goalTypeIcons[goal.goal_type]
+              const contributions = goalContributions[goal.id] || []
+              const totalContributions = contributions.reduce((sum, c) => sum + c.amount, 0)
 
               return (
                 <Card key={goal.id} className="hover:shadow-lg transition-shadow">
@@ -256,9 +298,18 @@ export function SavingsGoalsClient({ userId }: SavingsGoalsClientProps) {
                       )}
                     </div>
 
-                    {/* Investment Return Tracking Button */}
+                    {totalContributions > 0 && (
+                      <div className="flex items-center gap-2 pt-2 px-3 py-2 bg-green-500/10 rounded-lg border border-green-500/20">
+                        <ArrowUpRight className="h-4 w-4 text-green-600" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Investment Contribution</p>
+                          <p className="text-sm font-semibold text-green-600">{formatCurrency(totalContributions)}</p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex gap-2 pt-2 border-t">
-                      <InvestmentReturnsDialog goalId={goal.id} onSuccess={() => {}} />
+                      <InvestmentReturnsDialog goalId={goal.id} onSuccess={() => mutate()} />
                     </div>
                   </CardContent>
                 </Card>

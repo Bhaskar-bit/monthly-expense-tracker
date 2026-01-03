@@ -10,13 +10,13 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Camera, X, Loader2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from "@/lib/types"
 import { mutate } from "swr"
 import { useMonth } from "@/lib/context/month-context"
 import { ensureMonthExists, updateNextMonthCarryover } from "@/lib/utils/month-utils"
 import { fileService } from "@/lib/services/file-service"
+import { createExpenseAction } from "@/lib/actions/expense-actions"
 
 export function AddExpenseDialog() {
   const { toast } = useToast()
@@ -116,26 +116,19 @@ export function AddExpenseDialog() {
     }
 
     setIsLoading(true)
-    const supabase = createClient()
 
     try {
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) throw new Error("Not authenticated")
-
       const monthData = await ensureMonthExists(currentMonth)
 
       if (!monthData) throw new Error("Failed to get or create month")
 
-      const { error } = await supabase.from("expenses").insert({
-        user_id: userData.user.id,
-        month_id: monthData.id,
-        category: category as ExpenseCategory,
-        amount: Number.parseFloat(amount),
-        description: description || null,
-        expense_date: expenseDate,
-      })
-
-      if (error) throw error
+      await createExpenseAction(
+        monthData.id,
+        category as ExpenseCategory,
+        Number.parseFloat(amount),
+        description || null,
+        expenseDate,
+      )
 
       toast({
         title: "Success",
