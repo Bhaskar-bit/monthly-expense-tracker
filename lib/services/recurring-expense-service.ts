@@ -65,4 +65,8 @@ export const recurringExpenseService = {
     if (error) throw error
     return data
   },
+
+  async createRecurringExpense(input: CreateRecurringExpenseInput): Promise<RecurringExpense> {
+    throw new Error("Use createRecurringExpenseAction from server instead")
+  },
 }

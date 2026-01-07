@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from "@/lib/types"
-import { recurringExpenseService } from "@/lib/services/recurring-expense-service"
+import { createRecurringExpenseAction } from "@/lib/actions/recurring-expense-actions"
 import { mutate } from "swr"
 
 export function RecurringExpenseDialog() {
@@ -41,7 +41,7 @@ export function RecurringExpenseDialog() {
     setIsLoading(true)
 
     try {
-      await recurringExpenseService.createRecurringExpense({
+      await createRecurringExpenseAction({
         category: category as ExpenseCategory,
         amount: Number.parseFloat(amount),
         description: description || null,
