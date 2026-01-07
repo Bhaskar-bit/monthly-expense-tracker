@@ -1,7 +1,8 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { expenseService } from "@/lib/services/expense-service"
+import { revalidateTag } from "next/cache"
+import type { ExpenseCategory } from "@/lib/types"
 
 export async function createExpenseAction(
   monthId: string,
@@ -20,15 +21,27 @@ export async function createExpenseAction(
       throw new Error("Not authenticated")
     }
 
-    const expense = await expenseService.createExpense({
-      month_id: monthId,
-      category: category as any,
-      amount,
-      description,
-      expense_date: expenseDate,
-    })
+    const { data: expense, error } = await supabase
+      .from("expenses")
+      .insert({
+        month_id: monthId,
+        user_id: userData.user.id,
+        category: category as ExpenseCategory,
+        amount,
+        description,
+        expense_date: expenseDate,
+      })
+      .select()
+      .single()
+
+    if (error) throw error
 
     console.log("[v0] Expense created successfully:", expense.id)
+
+    // Revalidate cache tags for SWR to pick up changes
+    revalidateTag(`expenses-${monthId}`)
+    revalidateTag(`month-${monthId}`)
+
     return { success: true, expense }
   } catch (error) {
     console.error("[v0] Error in createExpenseAction:", error)
