@@ -19,8 +19,16 @@ export function MonthProvider({ children }: { children: ReactNode }) {
     if (monthParam) {
       return monthParam
     }
-    // Default to current month
     const now = new Date()
+    const day = now.getDate()
+
+    // If today is on or after the 24th, we're in next month's cycle
+    if (day >= 24) {
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+      return nextMonth.toISOString().split("T")[0]
+    }
+
+    // Otherwise, we're in current month's cycle
     return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]
   })
 

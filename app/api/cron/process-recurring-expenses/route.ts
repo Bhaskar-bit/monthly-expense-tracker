@@ -9,7 +9,7 @@ export async function GET(request: Request) {
       return new Response("Unauthorized", { status: 401 })
     }
 
-    const result = await recurringExpenseProcessor.processRecurringExpenses()
+    const result = await recurringExpenseProcessor.processRecurringExpensesDaily()
 
     return new Response(JSON.stringify(result), {
       status: 200,

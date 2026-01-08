@@ -1,11 +1,9 @@
 @import "tailwindcss";
-/* Removed problematic tw-animate-css import that was causing CSS parsing errors with undefined slide-out-to-start utilities */
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
-/* Fresh minimal fintech design system inspired by Wise, Mercury, Stripe */
 :root {
-  /* Light mode - Clean and minimal */
   --background: #ffffff;
   --foreground: #1a1a1a;
   --card: #f8f9fb;
@@ -42,7 +40,6 @@
 }
 
 .dark {
-  /* Dark mode - Sophisticated with high contrast */
   --background: #0f1117;
   --foreground: #e6edf3;
   --card: #161b22;
@@ -67,7 +64,7 @@
   --chart-3: #d29922;
   --chart-4: #79c0ff;
   --chart-5: #d2a8ff;
-  --sidebar: #161b22;
+  --sidebar: #0f1117;
   --sidebar-foreground: #e6edf3;
   --sidebar-primary: #58a6ff;
   --sidebar-primary-foreground: #0f1117;
@@ -78,8 +75,7 @@
 }
 
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback";
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  /* optional: --font-sans, --font-serif, --font-mono if they are applied in the layout.tsx */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -104,10 +100,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
-  --radius-xl: calc(var(--radius) + 6px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -122,48 +118,13 @@
   * {
     @apply border-border outline-ring/50;
   }
-  html {
-    color-scheme: light;
-  }
-  html.dark {
-    color-scheme: dark;
-  }
   body {
     @apply bg-background text-foreground;
   }
-
-  /* Smooth transitions for theme switching */
-  html,
-  body,
-  * {
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-  }
-
-  /* Minimal, clean card design */
-  .card {
-    @apply bg-card text-card-foreground border border-border rounded-md;
-  }
 }
 
-@layer components {
-  /* Removed problematic slide-out utilities that were causing CSS errors */
-
-  /* Subtle shadow for depth without overdoing it */
-  .shadow-sm {
-    @apply shadow-sm;
-  }
-
-  /* Clean button styling */
-  .btn-primary {
-    @apply bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90 transition-opacity;
-  }
-
-  .btn-secondary {
-    @apply bg-secondary text-secondary-foreground px-4 py-2 rounded-md border border-border hover:bg-secondary/80 transition-colors;
-  }
-
-  /* Clean input styling */
-  .input-clean {
-    @apply w-full px-3 py-2 rounded-md border border-border bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary;
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
   }
 }

@@ -8,6 +8,7 @@ import { useMonth } from "@/lib/context/month-context"
 import { usePrivacyMask } from "@/lib/context/privacy-context"
 import { Progress } from "@/components/ui/progress"
 import { getCategoryColor } from "@/lib/utils/category-colors"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 
 export function MonthlySummary() {
   const { currentMonth } = useMonth()
@@ -80,29 +81,62 @@ export function MonthlySummary() {
                 const amount = categoryTotals[category] || 0
                 const percentage = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
                 const colors = getCategoryColor(category)
+                const categoryExpenses = expenses.filter((exp) => exp.category === category)
 
                 return (
-                  <div
-                    key={category}
-                    className="p-3 rounded-lg border border-muted/40 bg-muted/30 hover:bg-muted/50 transition-colors space-y-2"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className={`font-medium text-sm line-clamp-2 ${colors.text}`}>{category}</span>
-                      <span className="font-semibold text-sm flex-shrink-0">₹{amount.toFixed(2)}</span>
-                    </div>
-                    <div className="relative h-2 bg-muted/50 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${colors.bg} border-r-2 ${colors.border} transition-all duration-500`}
-                        style={{ width: `${percentage}%` }}
-                        role="progressbar"
-                        aria-valuenow={Math.round(percentage)}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-label={`${category}: ${percentage.toFixed(1)}%`}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground text-right">{percentage.toFixed(1)}%</p>
-                  </div>
+                  <HoverCard key={category} openDelay={200}>
+                    <HoverCardTrigger asChild>
+                      <div className="p-3 rounded-lg border border-muted/40 bg-muted/30 hover:bg-muted/50 transition-colors space-y-2 cursor-pointer">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className={`font-medium text-sm line-clamp-2 ${colors.text}`}>{category}</span>
+                          <span className="font-semibold text-sm flex-shrink-0">₹{amount.toFixed(2)}</span>
+                        </div>
+                        <div className="relative h-2 bg-muted/50 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${colors.bg} border-r-2 ${colors.border} transition-all duration-500`}
+                            style={{ width: `${percentage}%` }}
+                            role="progressbar"
+                            aria-valuenow={Math.round(percentage)}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-label={`${category}: ${percentage.toFixed(1)}%`}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground text-right">{percentage.toFixed(1)}%</p>
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80 max-h-96 overflow-y-auto" side="top" align="start">
+                      <div className="space-y-2">
+                        <h4 className={`font-semibold text-sm ${colors.text}`}>{category}</h4>
+                        <p className="text-xs text-muted-foreground">
+                          {categoryExpenses.length} expense{categoryExpenses.length !== 1 ? "s" : ""}
+                        </p>
+                        <div className="space-y-2 pt-2">
+                          {categoryExpenses.map((expense) => (
+                            <div
+                              key={expense.id}
+                              className="flex items-start justify-between gap-2 p-2 rounded bg-muted/50 hover:bg-muted transition-colors"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">
+                                  {expense.description || "No description"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(expense.expense_date).toLocaleDateString("en-IN", {
+                                    day: "numeric",
+                                    month: "short",
+                                  })}
+                                </p>
+                              </div>
+                              <span className="text-sm font-semibold flex-shrink-0">
+                                ₹{Number(expense.amount).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
                 )
               })}
             </div>

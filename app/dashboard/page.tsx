@@ -14,7 +14,6 @@ import { PrivacyProvider } from "@/lib/context/privacy-context"
 import { RecurringExpensesList } from "@/components/recurring-expenses-list"
 import { MobileNav } from "@/components/mobile-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { recurringExpenseProcessor } from "@/lib/services/recurring-expense-processor"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -24,14 +23,7 @@ export default async function DashboardPage() {
     redirect("/auth/login")
   }
 
-  try {
-    const currentDate = new Date()
-    const currentMonthYear = currentDate.toISOString().slice(0, 7)
-    await recurringExpenseProcessor.processRecurringForMonth(data.user.id, currentMonthYear)
-  } catch (error) {
-    console.error("[v0] Error processing recurring expenses on dashboard load:", error)
-    // Don't fail the page if processing fails, just log the error
-  }
+  // Recurring expenses are now processed only once per day via cron job at /api/cron/process-recurring-expenses
 
   return (
     <PrivacyProvider>
