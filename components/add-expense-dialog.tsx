@@ -115,6 +115,16 @@ export function AddExpenseDialog() {
       return
     }
 
+    const amountValue = Number.parseFloat(amount)
+    if (isNaN(amountValue) || amountValue <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Amount must be greater than zero",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -125,7 +135,7 @@ export function AddExpenseDialog() {
       await createExpenseAction(
         monthData.id,
         category as ExpenseCategory,
-        Number.parseFloat(amount),
+        amountValue,
         description || null,
         expenseDate,
       )
@@ -252,6 +262,7 @@ export function AddExpenseDialog() {
               id="amount"
               type="number"
               step="0.01"
+              min="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"

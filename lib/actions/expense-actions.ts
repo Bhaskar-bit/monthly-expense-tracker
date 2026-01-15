@@ -13,6 +13,10 @@ export async function createExpenseAction(
   expenseDate: string,
 ) {
   try {
+    if (amount <= 0) {
+      throw new Error("Amount must be greater than zero")
+    }
+
     console.log("[v0] createExpenseAction called with:", { monthId, category, amount, expenseDate })
 
     const supabase = await createClient()

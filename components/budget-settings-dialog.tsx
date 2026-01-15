@@ -56,8 +56,18 @@ export function BudgetSettingsDialog() {
       return
     }
 
+    const limitValue = Number.parseFloat(limit)
+    if (isNaN(limitValue) || limitValue <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Budget limit must be greater than zero",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
-      await budgetService.setBudgetLimit(category as any, Number.parseFloat(limit))
+      await budgetService.setBudgetLimit(category as any, limitValue)
       toast({
         title: "Success",
         description: `Budget set for ${category}`,
@@ -127,6 +137,7 @@ export function BudgetSettingsDialog() {
               id="limit"
               type="number"
               step="0.01"
+              min="0.01"
               value={limit}
               onChange={(e) => setLimit(e.target.value)}
               placeholder="0.00"

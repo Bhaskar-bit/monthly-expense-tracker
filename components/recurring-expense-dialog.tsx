@@ -38,12 +38,22 @@ export function RecurringExpenseDialog() {
       return
     }
 
+    const amountValue = Number.parseFloat(amount)
+    if (isNaN(amountValue) || amountValue <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Amount must be greater than zero",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
       await createRecurringExpenseAction({
         category: category as ExpenseCategory,
-        amount: Number.parseFloat(amount),
+        amount: amountValue,
         description: description || null,
         frequency,
         start_date: startDate,
@@ -111,6 +121,7 @@ export function RecurringExpenseDialog() {
               id="amount"
               type="number"
               step="0.01"
+              min="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"

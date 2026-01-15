@@ -42,6 +42,19 @@ export function AddGoalDialog({ children, open, onOpenChange, onSuccess }: AddGo
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    const targetAmountValue = Number.parseFloat(formData.targetAmount)
+    if (isNaN(targetAmountValue) || targetAmountValue <= 0) {
+      toast.error("Target amount must be greater than zero")
+      return
+    }
+
+    const monthlyAllocationValue = formData.monthlyAllocation ? Number.parseFloat(formData.monthlyAllocation) : 0
+    if (monthlyAllocationValue < 0) {
+      toast.error("Monthly allocation cannot be negative")
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -52,8 +65,8 @@ export function AddGoalDialog({ children, open, onOpenChange, onSuccess }: AddGo
         user_id: userData.user.id,
         name: formData.name,
         description: formData.description || null,
-        target_amount: Number.parseFloat(formData.targetAmount),
-        monthly_allocation: Number.parseFloat(formData.monthlyAllocation) || 0,
+        target_amount: targetAmountValue,
+        monthly_allocation: monthlyAllocationValue,
         goal_type: formData.goalType,
         target_date: formData.targetDate || null,
         current_amount: 0,
@@ -119,6 +132,7 @@ export function AddGoalDialog({ children, open, onOpenChange, onSuccess }: AddGo
                 id="targetAmount"
                 type="number"
                 step="0.01"
+                min="0.01"
                 placeholder="5000"
                 value={formData.targetAmount}
                 onChange={(e) => setFormData({ ...formData, targetAmount: e.target.value })}
@@ -132,6 +146,7 @@ export function AddGoalDialog({ children, open, onOpenChange, onSuccess }: AddGo
                 id="monthlyAllocation"
                 type="number"
                 step="0.01"
+                min="0"
                 placeholder="500"
                 value={formData.monthlyAllocation}
                 onChange={(e) => setFormData({ ...formData, monthlyAllocation: e.target.value })}
