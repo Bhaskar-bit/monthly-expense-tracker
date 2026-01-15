@@ -1,14 +1,11 @@
 "use client"
 
 import useSWR from "swr"
-import { createClient } from "@/lib/supabase/client"
+import { supabase } from "@/lib/supabase/client"
 import type { Expense } from "@/lib/types"
 import { getCustomMonthCycle } from "@/lib/utils/custom-month-cycle"
-import { useMemo } from "react"
 
 export function useExpenses(currentMonth: string) {
-  const supabase = useMemo(() => createClient(), [])
-
   return useSWR<Expense[]>(
     currentMonth ? `expenses-${currentMonth}` : null,
     async () => {

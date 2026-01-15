@@ -1,5 +1,7 @@
+"use client"
+
 import useSWR from "swr"
-import { createClient } from "@/lib/supabase/client"
+import { supabase } from "@/lib/supabase/client"
 import type { Month } from "@/lib/types"
 import { ensureMonthExists } from "@/lib/utils/month-utils"
 
@@ -7,7 +9,6 @@ export function useMonthData(currentMonth: string) {
   return useSWR<Month | null>(
     currentMonth ? `month-${currentMonth}` : null,
     async () => {
-      const supabase = createClient()
       const { data: userData } = await supabase.auth.getUser()
 
       if (!userData.user) return null

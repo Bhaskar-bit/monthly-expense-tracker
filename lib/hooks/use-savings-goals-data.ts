@@ -1,11 +1,10 @@
 "use client"
 
 import useSWR from "swr"
-import { createClient } from "@/lib/supabase/client"
+import { supabase } from "@/lib/supabase/client"
 import type { SavingsGoal } from "@/lib/types"
 
 const fetcher = async (key: string) => {
-  const supabase = createClient()
   const { data: userData } = await supabase.auth.getUser()
 
   if (!userData.user) throw new Error("Not authenticated")

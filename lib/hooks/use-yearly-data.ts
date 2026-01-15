@@ -1,7 +1,7 @@
 "use client"
 
 import useSWR from "swr"
-import { createClient } from "@/lib/supabase/client"
+import { supabase } from "@/lib/supabase/client"
 import { EXPENSE_CATEGORIES } from "@/lib/types"
 
 interface YearlySummary {
@@ -22,7 +22,6 @@ interface YearlySummary {
 
 async function fetchYearlyData(year: string): Promise<YearlySummary> {
   console.log("[v0] Fetching yearly data for year:", year)
-  const supabase = createClient()
 
   // Get user
   const {

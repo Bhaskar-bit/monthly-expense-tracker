@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trash2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { supabase } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { useExpenses } from "@/lib/hooks/use-expenses"
 import { mutate } from "swr"
@@ -33,8 +33,6 @@ export function ExpenseList() {
   const { data: expenses = [], isLoading: loading } = useExpenses(currentMonth)
 
   const handleDelete = async (id: string) => {
-    const supabase = createClient()
-
     const { error } = await supabase.from("expenses").delete().eq("id", id)
 
     if (error) {
