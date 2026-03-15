@@ -13,9 +13,14 @@ export async function backfillHistoricalInvestmentsAction() {
       throw new Error("Not authenticated")
     }
 
-    console.log("[v0] Starting backfill of historical investments for user:", userData.user.id)
+    console.log(
+      "[v0] Starting priority-based backfill of historical investments for user:",
+      userData.user.id,
+    )
 
-    const result = await goalContributionService.backfillHistoricalInvestments(userData.user.id)
+    const result = await goalContributionService.backfillHistoricalInvestmentsByPriority(
+      userData.user.id,
+    )
 
     console.log("[v0] Backfill result:", result)
 
@@ -24,7 +29,7 @@ export async function backfillHistoricalInvestmentsAction() {
 
     return {
       success: true,
-      message: `Successfully synced ${result.synced} investments to savings goals. ${result.skipped} were already synced.`,
+      message: `Successfully synced ${result.synced} investments to savings goals with priority-based allocation. ${result.skipped} were already synced.`,
       synced: result.synced,
       skipped: result.skipped,
     }
