@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidateTag } from "next/cache"
 import type { ExpenseCategory } from "@/lib/types"
 import { getMonthForExpenseDate } from "@/lib/utils/custom-month-cycle"
+import { goalContributionService } from "@/lib/services/goal-contribution-service"
 
 export async function createExpenseAction(
   monthId: string,
@@ -56,9 +57,22 @@ export async function createExpenseAction(
 
     console.log("[v0] Expense created successfully:", expense.id)
 
+    // Sync investment expenses to savings goals
+    if (category === "Investment") {
+      console.log("[v0] Syncing investment expense to savings goals...")
+      await goalContributionService.syncInvestmentExpenseToGoals(
+        userData.user.id,
+        expense.id,
+        amount,
+        expenseDate,
+        category,
+      )
+    }
+
     // Revalidate cache tags for SWR to pick up changes
     revalidateTag(`expenses-${correctMonthYear}`)
     revalidateTag(`month-${finalMonthId}`)
+    revalidateTag("savings-goals")
 
     return { success: true, expense }
   } catch (error) {
