@@ -57,6 +57,7 @@ export interface SavingsGoal {
   goal_type: GoalType
   status: GoalStatus
   target_date: string | null
+  priority: number
   created_at: string
   updated_at: string
 }

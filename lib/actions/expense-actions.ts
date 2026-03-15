@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidateTag } from "next/cache"
 import type { ExpenseCategory } from "@/lib/types"
 import { getMonthForExpenseDate } from "@/lib/utils/custom-month-cycle"
+import { goalContributionService } from "@/lib/services/goal-contribution-service"
 
 export async function createExpenseAction(
   monthId: string,
@@ -56,9 +57,21 @@ export async function createExpenseAction(
 
     console.log("[v0] Expense created successfully:", expense.id)
 
+    // Allocate investment expenses to savings goals by priority
+    if (category === "Investment") {
+      console.log("[v0] Allocating investment expense to savings goals by priority...")
+      await goalContributionService.allocateInvestmentByPriority(
+        userData.user.id,
+        expense.id,
+        amount,
+        expenseDate,
+      )
+    }
+
     // Revalidate cache tags for SWR to pick up changes
     revalidateTag(`expenses-${correctMonthYear}`)
     revalidateTag(`month-${finalMonthId}`)
+    revalidateTag("savings-goals")
 
     return { success: true, expense }
   } catch (error) {
