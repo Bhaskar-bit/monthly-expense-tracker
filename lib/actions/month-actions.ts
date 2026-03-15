@@ -7,9 +7,9 @@ export async function ensureMonthExistsAction(userId: string, monthYear: string)
     const supabase = await createClient()
 
     // Normalize monthYear to first day of month (YYYY-MM-01 format)
-    const normalizedMonthYear = new Date(monthYear + "-01")
-      .toISOString()
-      .split("T")[0]
+    // Handle both YYYY-MM and YYYY-MM-DD formats
+    const [year, month] = monthYear.split("-")
+    const normalizedMonthYear = `${year}-${month}-01`
 
     const { data: existingMonth } = await supabase
       .from("months")
