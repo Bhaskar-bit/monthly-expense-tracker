@@ -6,15 +6,20 @@ export async function ensureMonthExistsAction(userId: string, monthYear: string)
   try {
     const supabase = await createClient()
 
+    // Normalize monthYear to first day of month (YYYY-MM-01 format)
+    const normalizedMonthYear = new Date(monthYear + "-01")
+      .toISOString()
+      .split("T")[0]
+
     const { data: existingMonth } = await supabase
       .from("months")
       .select("*")
       .eq("user_id", userId)
-      .eq("month_year", monthYear)
-      .single()
+      .eq("month_year", normalizedMonthYear)
+      .maybeSingle()
 
     if (!existingMonth) {
-      const prevMonthDate = new Date(monthYear)
+      const prevMonthDate = new Date(normalizedMonthYear)
       prevMonthDate.setMonth(prevMonthDate.getMonth() - 1)
       const prevMonthYear = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth(), 1)
         .toISOString()
@@ -25,7 +30,7 @@ export async function ensureMonthExistsAction(userId: string, monthYear: string)
         .select("*")
         .eq("user_id", userId)
         .eq("month_year", prevMonthYear)
-        .single()
+        .maybeSingle()
 
       let carryover = 0
       if (prevMonthData) {
@@ -37,7 +42,7 @@ export async function ensureMonthExistsAction(userId: string, monthYear: string)
 
       await supabase.from("months").insert({
         user_id: userId,
-        month_year: monthYear,
+        month_year: normalizedMonthYear,
         inflow: 0,
         carryover_from_previous: Math.max(0, carryover),
       })

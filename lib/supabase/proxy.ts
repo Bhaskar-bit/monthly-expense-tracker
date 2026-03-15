@@ -10,9 +10,6 @@ export async function updateSession(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!url || !key) {
-    console.log("[v0] Missing Supabase environment variables in proxy")
-    console.log("[v0] NEXT_PUBLIC_SUPABASE_URL:", url ? "SET" : "NOT SET")
-    console.log("[v0] NEXT_PUBLIC_SUPABASE_ANON_KEY:", key ? "SET" : "NOT SET")
     return NextResponse.next({ request })
   }
 
@@ -33,12 +30,19 @@ export async function updateSession(request: NextRequest) {
 
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser()
 
-  if (request.nextUrl.pathname.startsWith("/dashboard") && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/auth/login"
-    return NextResponse.redirect(url)
+  // If there's an auth error (like invalid refresh token), redirect to login for protected routes
+  if (error || !user) {
+    if (
+      request.nextUrl.pathname.startsWith("/dashboard") ||
+      request.nextUrl.pathname.startsWith("/settings")
+    ) {
+      const redirectUrl = request.nextUrl.clone()
+      redirectUrl.pathname = "/auth/login"
+      return NextResponse.redirect(redirectUrl)
+    }
   }
 
   return supabaseResponse
