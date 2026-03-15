@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -38,14 +38,11 @@ interface SavingsGoal {
 
 export default function SavingsGoalsPageV2() {
   const { goals: fetchedGoals, isLoading, mutate } = useSavingsGoalsData()
-  const [goals, setGoals] = useState<SavingsGoal[]>([])
   const [isBackfilling, setIsBackfilling] = useState(false)
 
-  useEffect(() => {
-    if (fetchedGoals) {
-      const sortedGoals = [...fetchedGoals].sort((a, b) => (a.priority || 999) - (b.priority || 999))
-      setGoals(sortedGoals)
-    }
+  const goals = useMemo(() => {
+    if (!fetchedGoals) return []
+    return [...fetchedGoals].sort((a, b) => (a.priority || 999) - (b.priority || 999))
   }, [fetchedGoals])
 
   async function handleDeleteGoal(goalId: string, goalName: string) {
