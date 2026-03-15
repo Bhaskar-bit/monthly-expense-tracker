@@ -16,6 +16,7 @@ import {
   Archive,
   Trash2,
   ArrowUpRight,
+  RefreshCw,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { AddGoalDialog } from "@/components/add-goal-dialog"
@@ -24,6 +25,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from "sonner"
 import { InvestmentReturnsDialog } from "@/components/investment-returns-dialog"
 import { useSavingsGoalsData } from "@/lib/hooks/use-savings-goals-data"
+import { backfillHistoricalInvestmentsAction } from "@/lib/actions/backfill-actions"
 import type { GoalContribution } from "@/lib/types"
 
 const goalTypeColors = {
@@ -47,7 +49,28 @@ interface SavingsGoalsClientProps {
 export function SavingsGoalsClient({ userId }: SavingsGoalsClientProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [goalContributions, setGoalContributions] = useState<Record<string, GoalContribution[]>>({})
+  const [isBackfilling, setIsBackfilling] = useState(false)
   const { goals, isLoading, mutate } = useSavingsGoalsData()
+
+  async function handleBackfillInvestments() {
+    try {
+      setIsBackfilling(true)
+      const result = await backfillHistoricalInvestmentsAction()
+
+      if (result.success) {
+        toast.success(result.message)
+        // Refresh the goals data to show updated amounts
+        await mutate()
+      } else {
+        toast.error(result.message)
+      }
+    } catch (error) {
+      console.error("[v0] Error backfilling investments:", error)
+      toast.error("Failed to sync historical investments")
+    } finally {
+      setIsBackfilling(false)
+    }
+  }
 
   useEffect(() => {
     if (goals.length === 0) {
@@ -190,12 +213,26 @@ export function SavingsGoalsClient({ userId }: SavingsGoalsClientProps) {
             <h2 className="text-2xl font-bold">Active Goals</h2>
             <p className="text-sm text-muted-foreground mt-1">Track your progress toward financial goals</p>
           </div>
-          <AddGoalDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onSuccess={() => mutate()}>
-            <Button size="lg" className="shadow-lg hover:shadow-xl transition-shadow">
-              <Plus className="w-5 h-5 mr-2" />
-              Add Goal
-            </Button>
-          </AddGoalDialog>
+          <div className="flex gap-2">
+            {goals.length > 0 && (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleBackfillInvestments}
+                disabled={isBackfilling}
+                className="shadow-lg hover:shadow-xl transition-shadow"
+              >
+                <RefreshCw className={`w-5 h-5 mr-2 ${isBackfilling ? "animate-spin" : ""}`} />
+                {isBackfilling ? "Syncing..." : "Sync Past Investments"}
+              </Button>
+            )}
+            <AddGoalDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onSuccess={() => mutate()}>
+              <Button size="lg" className="shadow-lg hover:shadow-xl transition-shadow">
+                <Plus className="w-5 h-5 mr-2" />
+                Add Goal
+              </Button>
+            </AddGoalDialog>
+          </div>
         </div>
 
         {activeGoals.length === 0 ? (

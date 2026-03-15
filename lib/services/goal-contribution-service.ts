@@ -230,4 +230,105 @@ export const goalContributionService = {
       console.error("[v0] Error removing investment from goals:", error)
     }
   },
+
+  async backfillHistoricalInvestments(userId: string): Promise<{ synced: number; skipped: number }> {
+    try {
+      const supabase = createClient()
+
+      // Get all active savings goals
+      const { data: goals, error: goalsError } = await supabase
+        .from("savings_goals")
+        .select("id, current_amount, target_amount")
+        .eq("user_id", userId)
+        .eq("status", "active")
+
+      if (goalsError || !goals || goals.length === 0) {
+        console.error("[v0] No active savings goals found for backfill")
+        return { synced: 0, skipped: 0 }
+      }
+
+      // Get all investment expenses that don't have contributions yet
+      const { data: investmentExpenses, error: expensesError } = await supabase
+        .from("expenses")
+        .select("id, amount, expense_date, category")
+        .eq("user_id", userId)
+        .eq("category", "Investment")
+        .order("expense_date", { ascending: true })
+
+      if (expensesError || !investmentExpenses) {
+        console.error("[v0] Error fetching investment expenses:", expensesError)
+        return { synced: 0, skipped: 0 }
+      }
+
+      let synced = 0
+      let skipped = 0
+
+      // Process each investment expense
+      for (const expense of investmentExpenses) {
+        // Check if this expense already has contributions
+        const { data: existingContributions, error: checkError } = await supabase
+          .from("goal_contributions")
+          .select("id")
+          .eq("expense_id", expense.id)
+          .limit(1)
+
+        if (checkError) {
+          console.error(`[v0] Error checking contributions for expense ${expense.id}:`, checkError)
+          skipped++
+          continue
+        }
+
+        // Skip if contributions already exist
+        if (existingContributions && existingContributions.length > 0) {
+          skipped++
+          continue
+        }
+
+        // Create contributions for this expense across all active goals
+        for (const goal of goals) {
+          const { error: insertError } = await supabase.from("goal_contributions").insert({
+            goal_id: goal.id,
+            user_id: userId,
+            expense_id: expense.id,
+            amount: expense.amount,
+            contribution_date: expense.expense_date,
+          })
+
+          if (insertError) {
+            console.error(
+              `[v0] Error creating contribution for goal ${goal.id}, expense ${expense.id}:`,
+              insertError,
+            )
+            continue
+          }
+
+          // Update goal's current_amount
+          const newCurrentAmount = Number(goal.current_amount || 0) + Number(expense.amount)
+          const newStatus = newCurrentAmount >= Number(goal.target_amount) ? "completed" : "active"
+
+          const { error: updateError } = await supabase
+            .from("savings_goals")
+            .update({
+              current_amount: newCurrentAmount,
+              status: newStatus,
+            })
+            .eq("id", goal.id)
+
+          if (updateError) {
+            console.error(`[v0] Error updating goal ${goal.id}:`, updateError)
+          }
+        }
+
+        synced++
+      }
+
+      console.log(
+        `[v0] Backfill complete: ${synced} investments synced to ${goals.length} goals, ${skipped} skipped`,
+      )
+      return { synced, skipped }
+    } catch (error) {
+      console.error("[v0] Error backfilling historical investments:", error)
+      throw error
+    }
+  },
 }
