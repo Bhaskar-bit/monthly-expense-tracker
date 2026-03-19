@@ -65,6 +65,7 @@ export async function createExpenseAction(
         expense.id,
         amount,
         expenseDate,
+        supabase,
       )
     }
 

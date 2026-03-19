@@ -1,6 +1,4 @@
-"use client"
-
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
 import type { GoalContribution } from "@/lib/types"
 
 interface SavingsGoal {
@@ -21,8 +19,8 @@ interface AllocationResult {
 }
 
 export const goalContributionService = {
-  async getGoalContributionsByExpense(expenseId: string): Promise<GoalContribution[]> {
-    const supabase = createClient()
+  async getGoalContributionsByExpense(expenseId: string, supabaseClient?: any): Promise<GoalContribution[]> {
+    const supabase = supabaseClient || (await createClient())
     const { data: userData } = await supabase.auth.getUser()
 
     if (!userData.user) throw new Error("Not authenticated")
@@ -37,8 +35,8 @@ export const goalContributionService = {
     return data || []
   },
 
-  async getGoalContributionsByGoal(goalId: string): Promise<GoalContribution[]> {
-    const supabase = createClient()
+  async getGoalContributionsByGoal(goalId: string, supabaseClient?: any): Promise<GoalContribution[]> {
+    const supabase = supabaseClient || (await createClient())
     const { data: userData } = await supabase.auth.getUser()
 
     if (!userData.user) throw new Error("Not authenticated")
@@ -54,8 +52,8 @@ export const goalContributionService = {
     return data || []
   },
 
-  async deleteContribution(contributionId: string): Promise<void> {
-    const supabase = createClient()
+  async deleteContribution(contributionId: string, supabaseClient?: any): Promise<void> {
+    const supabase = supabaseClient || (await createClient())
     const { data: userData } = await supabase.auth.getUser()
 
     if (!userData.user) throw new Error("Not authenticated")
@@ -106,8 +104,9 @@ export const goalContributionService = {
     expenseId: string,
     amount: number,
     expenseDate: string,
+    supabaseClient?: any,
   ): Promise<AllocationResult[]> {
-    const supabase = createClient()
+    const supabase = supabaseClient || (await createClient())
     const allocations: AllocationResult[] = []
 
     try {
@@ -207,11 +206,11 @@ export const goalContributionService = {
   /**
    * Backfill historical investment expenses with priority-based allocation
    */
-  async backfillHistoricalInvestmentsByPriority(userId: string): Promise<{
+  async backfillHistoricalInvestmentsByPriority(userId: string, supabaseClient?: any): Promise<{
     synced: number
     skipped: number
   }> {
-    const supabase = createClient()
+    const supabase = supabaseClient || (await createClient())
 
     try {
       console.log("[v0] Starting priority-based backfill for user:", userId)
@@ -265,6 +264,7 @@ export const goalContributionService = {
           expense.id,
           Number(expense.amount),
           expense.expense_date,
+          supabase,
         )
 
         if (allocations.length > 0) {
@@ -306,8 +306,8 @@ export const goalContributionService = {
   /**
    * Get all savings goals ordered by priority
    */
-  async getSavingsGoalsByPriority(userId: string): Promise<SavingsGoal[]> {
-    const supabase = createClient()
+  async getSavingsGoalsByPriority(userId: string, supabaseClient?: any): Promise<SavingsGoal[]> {
+    const supabase = supabaseClient || (await createClient())
 
     const { data: goals, error } = await supabase
       .from("savings_goals")

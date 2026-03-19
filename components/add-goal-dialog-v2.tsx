@@ -31,6 +31,8 @@ export function AddGoalDialogV2({ open: controlledOpen, onOpenChange, onSuccess,
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
+    console.log("[v0] Adding goal with name:", goalName, "amount:", targetAmount)
+
     if (!goalName.trim()) {
       toast.error("Please enter a goal name")
       return
@@ -44,7 +46,9 @@ export function AddGoalDialogV2({ open: controlledOpen, onOpenChange, onSuccess,
 
     try {
       setIsLoading(true)
-      await createSavingsGoalAction(goalName, amount)
+      console.log("[v0] Calling createSavingsGoalAction with:", { goalName, amount })
+      const result = await createSavingsGoalAction(goalName, amount)
+      console.log("[v0] Goal created successfully:", result)
 
       toast.success(`Savings goal "${goalName}" created successfully!`)
       setGoalName("")
@@ -53,7 +57,7 @@ export function AddGoalDialogV2({ open: controlledOpen, onOpenChange, onSuccess,
       onSuccess?.()
     } catch (error) {
       console.error("[v0] Error creating goal:", error)
-      toast.error("Failed to create savings goal")
+      toast.error(error instanceof Error ? error.message : "Failed to create savings goal")
     } finally {
       setIsLoading(false)
     }
