@@ -98,24 +98,32 @@ export default function SavingsGoalsPageV2() {
   }
 
   async function handleBackfillInvestments() {
+    console.log("[v0] Backfill started. Current goals:", goals.length)
+    
     if (goals.length === 0) {
+      console.log("[v0] No goals available for backfill")
       toast.error("Create at least one savings goal first")
       return
     }
 
     try {
       setIsBackfilling(true)
+      console.log("[v0] Calling backfillHistoricalInvestmentsAction...")
       const result = await backfillHistoricalInvestmentsAction()
+      
+      console.log("[v0] Backfill result:", result)
 
       if (result.success) {
         toast.success(result.message)
+        console.log("[v0] Backfill successful, refreshing data...")
         await mutate()
       } else {
+        console.log("[v0] Backfill failed:", result.message)
         toast.error(result.message)
       }
     } catch (error) {
       console.error("[v0] Error backfilling investments:", error)
-      toast.error("Failed to sync historical investments")
+      toast.error(error instanceof Error ? error.message : "Failed to sync historical investments")
     } finally {
       setIsBackfilling(false)
     }
