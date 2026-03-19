@@ -110,12 +110,13 @@ export const goalContributionService = {
     const allocations: AllocationResult[] = []
 
     try {
-      // Get all active savings goals ordered by priority (ascending)
+      // Get all savings goals ordered by priority (ascending)
+      // Include both active and incomplete goals that still need funding
       const { data: goals, error: goalsError } = await supabase
         .from("savings_goals")
         .select("id, name, target_amount, current_amount, priority, status")
         .eq("user_id", userId)
-        .eq("status", "active")
+        .in("status", ["active", "inactive"])
         .order("priority", { ascending: true })
 
       if (goalsError) {
@@ -124,9 +125,11 @@ export const goalContributionService = {
       }
 
       if (!goals || goals.length === 0) {
-        console.log("[v0] No active savings goals found for priority allocation")
+        console.log("[v0] No savings goals found for priority allocation")
         return []
       }
+
+      console.log(`[v0] Found ${goals.length} goals to allocate to (including both active and inactive)`)
 
       let remainingAmount = amount
 
@@ -138,7 +141,7 @@ export const goalContributionService = {
 
         if (amountNeeded <= 0) {
           // Goal is already completed, skip it
-          console.log(`[v0] Goal ${goal.id} already completed, skipping`)
+          console.log(`[v0] Goal ${goal.id} ("${goal.name}") already completed (${goal.current_amount}/${goal.target_amount}), skipping`)
           continue
         }
 
@@ -215,18 +218,38 @@ export const goalContributionService = {
     try {
       console.log("[v0] Starting priority-based backfill for user:", userId)
 
+      // First, check if user has any savings goals at all
+      const { data: allGoals, error: goalsCheckError } = await supabase
+        .from("savings_goals")
+        .select("id, status")
+        .eq("user_id", userId)
+
+      if (goalsCheckError) {
+        console.error("[v0] Error checking for savings goals:", goalsCheckError)
+        return { synced: 0, skipped: 0 }
+      }
+
+      if (!allGoals || allGoals.length === 0) {
+        console.log("[v0] No savings goals exist for user - cannot backfill investments")
+        return { synced: 0, skipped: 0 }
+      }
+
+      console.log(`[v0] Found ${allGoals.length} savings goals for user`)
+
       // Get all investment expenses ordered by date
       const { data: investmentExpenses, error: expensesError } = await supabase
         .from("expenses")
         .select("id, amount, expense_date")
         .eq("user_id", userId)
-        .eq("category", "Investment")
+        .eq("category", "Investments")
         .order("expense_date", { ascending: true })
 
       if (expensesError || !investmentExpenses) {
         console.error("[v0] Error fetching investment expenses:", expensesError)
         return { synced: 0, skipped: 0 }
       }
+
+      console.log(`[v0] Found ${investmentExpenses.length} investment expenses to process`)
 
       if (investmentExpenses.length === 0) {
         console.log("[v0] No investment expenses found for backfill")
@@ -238,6 +261,8 @@ export const goalContributionService = {
 
       // Process each investment expense
       for (const expense of investmentExpenses) {
+        console.log(`[v0] Processing expense ${expense.id} with amount ₹${expense.amount}`)
+        
         // Check if this expense already has contributions
         const { data: existingContributions, error: checkError } = await supabase
           .from("goal_contributions")
@@ -258,18 +283,26 @@ export const goalContributionService = {
           continue
         }
 
-        // Allocate this investment by priority
-        const allocations = await this.allocateInvestmentByPriority(
-          userId,
-          expense.id,
-          Number(expense.amount),
-          expense.expense_date,
-          supabase,
-        )
+        try {
+          // Allocate this investment by priority
+          const allocations = await this.allocateInvestmentByPriority(
+            userId,
+            expense.id,
+            Number(expense.amount),
+            expense.expense_date,
+            supabase,
+          )
 
-        if (allocations.length > 0) {
-          synced++
-        } else {
+          console.log(`[v0] Expense ${expense.id} resulted in ${allocations.length} allocations`)
+
+          if (allocations && allocations.length > 0) {
+            synced++
+          } else {
+            console.log(`[v0] No allocations made for expense ${expense.id}`)
+            skipped++
+          }
+        } catch (allocationError) {
+          console.error(`[v0] Error allocating expense ${expense.id}:`, allocationError)
           skipped++
         }
       }
