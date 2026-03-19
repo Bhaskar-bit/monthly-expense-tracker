@@ -45,6 +45,9 @@ export async function createSavingsGoalAction(name: string, targetAmount: number
         current_amount: 0,
         priority: nextPriority,
         status: "active",
+        goal_type: "custom",
+        monthly_allocation: 0,
+        allocation_percentage: 0,
       })
       .select()
       .single()
