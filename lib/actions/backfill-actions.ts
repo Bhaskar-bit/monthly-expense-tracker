@@ -20,6 +20,7 @@ export async function backfillHistoricalInvestmentsAction() {
 
     const result = await goalContributionService.backfillHistoricalInvestmentsByPriority(
       userData.user.id,
+      supabase,
     )
 
     console.log("[v0] Backfill result:", result)

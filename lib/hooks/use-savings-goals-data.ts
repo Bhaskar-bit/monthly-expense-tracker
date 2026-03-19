@@ -13,7 +13,8 @@ const fetcher = async (key: string) => {
     .from("savings_goals")
     .select("*")
     .eq("user_id", userData.user.id)
-    .order("created_at", { ascending: false })
+    .order("priority", { ascending: true })
+    .order("created_at", { ascending: true })
 
   if (error) throw error
   return data || []

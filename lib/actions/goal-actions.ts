@@ -3,7 +3,11 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidateTag } from "next/cache"
 
-export async function createSavingsGoalAction(name: string, targetAmount: number) {
+export async function createSavingsGoalAction(
+  name: string,
+  targetAmount: number,
+  goalType: "Short-term" | "Long-term" | "Emergency" | "Luxury" = "Long-term",
+) {
   try {
     if (!name || name.trim().length === 0) {
       throw new Error("Goal name is required")
@@ -11,6 +15,12 @@ export async function createSavingsGoalAction(name: string, targetAmount: number
 
     if (targetAmount <= 0) {
       throw new Error("Target amount must be greater than zero")
+    }
+
+    // Validate goal_type
+    const validTypes = ["Short-term", "Long-term", "Emergency", "Luxury"]
+    if (!validTypes.includes(goalType)) {
+      throw new Error(`Invalid goal type. Must be one of: ${validTypes.join(", ")}`)
     }
 
     const supabase = await createClient()
@@ -45,13 +55,16 @@ export async function createSavingsGoalAction(name: string, targetAmount: number
         current_amount: 0,
         priority: nextPriority,
         status: "active",
+        goal_type: goalType,
+        monthly_allocation: 0,
+        allocation_percentage: 0,
       })
       .select()
       .single()
 
     if (error) throw error
 
-    console.log(`[v0] Created savings goal: ${name} (priority: ${nextPriority})`)
+    console.log(`[v0] Created savings goal: ${name} (priority: ${nextPriority}, type: ${goalType})`)
 
     revalidateTag("savings-goals")
 
