@@ -241,7 +241,7 @@ export const goalContributionService = {
         .from("expenses")
         .select("id, amount, expense_date")
         .eq("user_id", userId)
-        .eq("category", "Investment")
+        .eq("category", "Investments")
         .order("expense_date", { ascending: true })
 
       if (expensesError || !investmentExpenses) {

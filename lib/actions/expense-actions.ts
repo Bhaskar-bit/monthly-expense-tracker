@@ -58,7 +58,7 @@ export async function createExpenseAction(
     console.log("[v0] Expense created successfully:", expense.id)
 
     // Allocate investment expenses to savings goals by priority
-    if (category === "Investment") {
+    if (category === "Investments") {
       console.log("[v0] Allocating investment expense to savings goals by priority...")
       await goalContributionService.allocateInvestmentByPriority(
         userData.user.id,
