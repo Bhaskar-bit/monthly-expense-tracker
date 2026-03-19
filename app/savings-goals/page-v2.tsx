@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -15,6 +16,7 @@ import {
   Target,
   ArrowUp,
   ArrowDown,
+  ChevronLeft,
 } from "lucide-react"
 import { toast } from "sonner"
 import { formatCurrency } from "@/lib/utils"
@@ -37,6 +39,7 @@ interface SavingsGoal {
 }
 
 export default function SavingsGoalsPageV2() {
+  const router = useRouter()
   const { goals: fetchedGoals, isLoading, mutate } = useSavingsGoalsData()
   const [isBackfilling, setIsBackfilling] = useState(false)
 
@@ -151,8 +154,21 @@ export default function SavingsGoalsPageV2() {
   return (
     <main className="p-6 max-w-6xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Savings Goals</h1>
-        <p className="text-muted-foreground">
+        <div className="flex items-center gap-3 mb-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push("/dashboard")}
+            className="h-10 w-10"
+            title="Back to Dashboard"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Savings Goals</h1>
+          </div>
+        </div>
+        <p className="text-muted-foreground ml-13">
           Track your savings with priority-based allocation. Investment amounts are automatically distributed to your
           highest priority goals first.
         </p>
