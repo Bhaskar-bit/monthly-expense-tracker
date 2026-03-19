@@ -5,10 +5,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus } from "lucide-react"
 import { toast } from "sonner"
 import { createSavingsGoalAction } from "@/lib/actions/goal-actions"
 import type { ReactNode } from "react"
+
+type GoalType = "Short-term" | "Long-term" | "Emergency" | "Luxury"
 
 interface AddGoalDialogV2Props {
   open?: boolean
@@ -22,6 +25,7 @@ export function AddGoalDialogV2({ open: controlledOpen, onOpenChange, onSuccess,
   const [isLoading, setIsLoading] = useState(false)
   const [goalName, setGoalName] = useState("")
   const [targetAmount, setTargetAmount] = useState("")
+  const [goalType, setGoalType] = useState<GoalType>("Long-term")
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen)
@@ -46,13 +50,14 @@ export function AddGoalDialogV2({ open: controlledOpen, onOpenChange, onSuccess,
 
     try {
       setIsLoading(true)
-      console.log("[v0] Calling createSavingsGoalAction with:", { goalName, amount })
-      const result = await createSavingsGoalAction(goalName, amount)
+      console.log("[v0] Calling createSavingsGoalAction with:", { goalName, amount, goalType })
+      const result = await createSavingsGoalAction(goalName, amount, goalType)
       console.log("[v0] Goal created successfully:", result)
 
       toast.success(`Savings goal "${goalName}" created successfully!`)
       setGoalName("")
       setTargetAmount("")
+      setGoalType("Long-term")
       handleOpenChange(false)
       onSuccess?.()
     } catch (error) {
@@ -84,6 +89,21 @@ export function AddGoalDialogV2({ open: controlledOpen, onOpenChange, onSuccess,
               onChange={(e) => setGoalName(e.target.value)}
               disabled={isLoading}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="goal-type">Goal Type</Label>
+            <Select value={goalType} onValueChange={(value) => setGoalType(value as GoalType)} disabled={isLoading}>
+              <SelectTrigger id="goal-type">
+                <SelectValue placeholder="Select goal type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Short-term">Short-term (within 6 months)</SelectItem>
+                <SelectItem value="Long-term">Long-term (6+ months)</SelectItem>
+                <SelectItem value="Emergency">Emergency Fund</SelectItem>
+                <SelectItem value="Luxury">Luxury Purchase</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
