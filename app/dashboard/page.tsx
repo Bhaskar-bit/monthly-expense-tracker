@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { MonthSelector } from "@/components/month-selector"
 import { InflowCard } from "@/components/inflow-card"
+import { CreditCardBillCard } from "@/components/credit-card-bill-card"
 import { ExpenseList } from "@/components/expense-list"
 import { MonthlySummary } from "@/components/monthly-summary"
 import { AddExpenseDialog } from "@/components/add-expense-dialog"
@@ -99,12 +100,15 @@ export default async function DashboardPage() {
             <div className="space-y-6 sm:space-y-8">
               <MonthSelector userId={data.user.id} />
 
-              <div className="grid gap-6 md:grid-cols-2">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <div className="min-w-0">
                   <InflowCard />
                 </div>
                 <div className="min-w-0">
                   <MonthlySummary />
+                </div>
+                <div className="min-w-0">
+                  <CreditCardBillCard />
                 </div>
               </div>
 

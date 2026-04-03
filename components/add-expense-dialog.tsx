@@ -25,6 +25,7 @@ export function AddExpenseDialog() {
   const [amount, setAmount] = useState("")
   const [description, setDescription] = useState("")
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split("T")[0])
+  const [expenseSource, setExpenseSource] = useState<"savings_account" | "credit_card">("savings_account")
   const [isLoading, setIsLoading] = useState(false)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [isScanning, setIsScanning] = useState(false)
@@ -138,6 +139,7 @@ export function AddExpenseDialog() {
         amountValue,
         description || null,
         expenseDate,
+        expenseSource,
       )
 
       toast({
@@ -150,6 +152,7 @@ export function AddExpenseDialog() {
       setAmount("")
       setDescription("")
       setExpenseDate(new Date().toISOString().split("T")[0])
+      setExpenseSource("savings_account")
       setUploadedImage(null)
 
       mutate(`expenses-${currentMonth}`)
@@ -279,6 +282,24 @@ export function AddExpenseDialog() {
               onChange={(e) => setExpenseDate(e.target.value)}
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="expense-source">Payment Source *</Label>
+            <Select value={expenseSource} onValueChange={(value) => setExpenseSource(value as "savings_account" | "credit_card")}>
+              <SelectTrigger id="expense-source">
+                <SelectValue placeholder="Select payment source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="savings_account">Savings Account</SelectItem>
+                <SelectItem value="credit_card">Credit Card</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {expenseSource === "credit_card" 
+                ? "This will be deducted from your credit card bill paid this month" 
+                : "This will be deducted from your available balance"}
+            </p>
           </div>
 
           <div className="space-y-2">

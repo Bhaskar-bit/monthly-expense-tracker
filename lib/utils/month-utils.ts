@@ -147,15 +147,19 @@ export async function ensureMonthExists(monthYear: string) {
 
   const finalCarryover = Math.max(0, carryover)
 
-  // Create new month with carryover
+  // Use upsert to handle race conditions when ensureMonthExists is called concurrently
+  // This prevents duplicate key violations when multiple requests try to create the same month
   const { data: newMonth, error: createError } = await supabase
     .from("months")
-    .insert({
-      user_id: userData.user.id,
-      month_year: normalizedMonthYear,
-      inflow: 0,
-      carryover_from_previous: finalCarryover,
-    })
+    .upsert(
+      {
+        user_id: userData.user.id,
+        month_year: normalizedMonthYear,
+        inflow: 0,
+        carryover_from_previous: finalCarryover,
+      },
+      { onConflict: "user_id,month_year" },
+    )
     .select("*")
     .single()
 
