@@ -20,8 +20,8 @@ export async function POST(request: Request) {
     const body = await request.json()
     const validationResult = validateInput(ReceiptScanSchema, body)
 
-    if (validationResult.error) {
-      return NextResponse.json({ error: validationResult.error }, { status: 400 })
+    if (validationResult.error || !validationResult.data) {
+      return NextResponse.json({ error: validationResult.error ?? "Invalid request body" }, { status: 400 })
     }
 
     const { image } = validationResult.data
@@ -79,8 +79,8 @@ If you cannot extract information, respond with:
     }
 
     const dataValidationResult = validateInput(ReceiptDataSchema, rawResult)
-    if (dataValidationResult.error) {
-      return NextResponse.json({ error: `Invalid extracted data: ${dataValidationResult.error}` }, { status: 400 })
+    if (dataValidationResult.error || !dataValidationResult.data) {
+      return NextResponse.json({ error: `Invalid extracted data: ${dataValidationResult.error ?? "unknown"}` }, { status: 400 })
     }
 
     try {
