@@ -13,6 +13,7 @@ import { mutate } from "swr"
 import { useMonth } from "@/lib/context/month-context"
 import { usePrivacyMask } from "@/lib/context/privacy-context"
 import { updateNextMonthCarryover } from "@/lib/utils/month-utils"
+import { evaluateArithmeticExpression } from "@/lib/utils/arithmetic-evaluator"
 
 export function InflowCard() {
   const { toast } = useToast()
@@ -31,7 +32,10 @@ export function InflowCard() {
     if (!monthData?.id) return
 
     const supabase = createClient()
-    const newInflow = Number.parseFloat(tempInflow) || 0
+    
+    // Try to evaluate arithmetic expression, fallback to parseFloat
+    const evaluatedValue = evaluateArithmeticExpression(tempInflow)
+    const newInflow = evaluatedValue !== null ? evaluatedValue : (Number.parseFloat(tempInflow) || 0)
 
     const { error } = await supabase.from("months").update({ inflow: newInflow }).eq("id", monthData.id)
 
@@ -83,17 +87,21 @@ export function InflowCard() {
             This Month's Inflow
           </Label>
           {isEditing ? (
-            <div className="flex gap-2 flex-col sm:flex-row">
+            <div className="space-y-2">
               <Input
                 id="inflow-input"
-                type="number"
-                step="0.01"
+                type="text"
                 value={tempInflow}
                 onChange={(e) => setTempInflow(e.target.value)}
-                placeholder="Enter amount"
+                placeholder="Enter amount (e.g., 1000 + 500)"
                 className="text-lg font-semibold h-12"
-                aria-label="Enter inflow amount"
+                aria-label="Enter inflow amount. Supports arithmetic operations like 1000 + 500"
               />
+              <p className="text-xs text-muted-foreground">Tip: You can use arithmetic (e.g., 1234 + 789)</p>
+            </div>
+          ) : null}
+          {isEditing ? (
+            <div className="flex gap-2 flex-col sm:flex-row">
               <div className="flex gap-2">
                 <Button
                   size="icon"

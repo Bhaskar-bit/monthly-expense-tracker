@@ -17,6 +17,7 @@ import { useMonth } from "@/lib/context/month-context"
 import { ensureMonthExists, updateNextMonthCarryover } from "@/lib/utils/month-utils"
 import { fileService } from "@/lib/services/file-service"
 import { createExpenseAction } from "@/lib/actions/expense-actions"
+import { evaluateArithmeticExpression } from "@/lib/utils/arithmetic-evaluator"
 
 export function AddExpenseDialog() {
   const { toast } = useToast()
@@ -116,11 +117,14 @@ export function AddExpenseDialog() {
       return
     }
 
-    const amountValue = Number.parseFloat(amount)
+    // Try to evaluate arithmetic expression, fallback to parseFloat
+    const evaluatedValue = evaluateArithmeticExpression(amount)
+    const amountValue = evaluatedValue !== null ? evaluatedValue : Number.parseFloat(amount)
+    
     if (isNaN(amountValue) || amountValue <= 0) {
       toast({
         title: "Invalid Amount",
-        description: "Amount must be greater than zero",
+        description: "Amount must be greater than zero. You can use arithmetic (e.g., 100 + 50)",
         variant: "destructive",
       })
       return
@@ -263,14 +267,14 @@ export function AddExpenseDialog() {
             <Label htmlFor="amount">Amount (₹) *</Label>
             <Input
               id="amount"
-              type="number"
-              step="0.01"
-              min="0.01"
+              type="text"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
+              placeholder="e.g., 500 or 1000 + 200"
               required
+              aria-label="Enter expense amount. Supports arithmetic operations like 1000 + 500"
             />
+            <p className="text-xs text-muted-foreground">Tip: Use arithmetic (e.g., 1000 + 500, 2000 - 300)</p>
           </div>
 
           <div className="space-y-2">
