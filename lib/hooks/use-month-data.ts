@@ -24,7 +24,7 @@ export function useMonthData(currentMonth: string) {
       }
     },
     {
-      revalidateOnFocus: true,
+      revalidateOnFocus: false,
       revalidateOnReconnect: true,
     },
   )

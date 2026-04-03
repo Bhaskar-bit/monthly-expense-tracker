@@ -70,7 +70,6 @@ export async function ensureMonthExists(monthYear: string) {
   }
 
   // Month doesn't exist, create it with carryover from previous month
-  // Calculate previous month
   const [year, month] = normalizedMonthYear.split("-").map(Number)
   let prevMonth = month - 1
   let prevYear = year
@@ -82,7 +81,7 @@ export async function ensureMonthExists(monthYear: string) {
 
   const prevMonthYear = `${prevYear}-${String(prevMonth).padStart(2, "0")}-01`
 
-  const { data: prevMonthData, error: prevMonthError } = await supabase
+  const { data: prevMonthData } = await supabase
     .from("months")
     .select("*")
     .eq("user_id", userData.user.id)
@@ -92,8 +91,7 @@ export async function ensureMonthExists(monthYear: string) {
   let carryover = 0
 
   if (prevMonthData) {
-    // Calculate previous month's total expenses
-    const { data: prevExpenses, error: expensesError } = await supabase
+    const { data: prevExpenses } = await supabase
       .from("expenses")
       .select("amount")
       .eq("month_id", prevMonthData.id)
@@ -106,7 +104,6 @@ export async function ensureMonthExists(monthYear: string) {
   const finalCarryover = Math.max(0, carryover)
 
   // Use upsert to handle race conditions when ensureMonthExists is called concurrently
-  // This prevents duplicate key violations when multiple requests try to create the same month
   const { data: newMonth, error: createError } = await supabase
     .from("months")
     .upsert(
@@ -132,62 +129,105 @@ export async function ensureMonthExists(monthYear: string) {
   return newMonth
 }
 
+// Map to track pending updates to prevent concurrent lock issues
+const pendingUpdates = new Map<string, Promise<void>>()
+
 export async function updateNextMonthCarryover(currentMonthYear: string) {
   const normalizedMonthYear = normalizeMonthYear(currentMonthYear)
 
-  const supabase = createClient()
-
-  const { data: userData } = await supabase.auth.getUser()
-  if (!userData.user) return
-
-  // Calculate next month
-  const [year, month] = normalizedMonthYear.split("-").map(Number)
-  let nextMonth = month + 1
-  let nextYear = year
-
-  if (nextMonth > 12) {
-    nextMonth = 1
-    nextYear += 1
+  // If an update is already pending for this month, return that promise to deduplicate requests
+  if (pendingUpdates.has(normalizedMonthYear)) {
+    return pendingUpdates.get(normalizedMonthYear)!
   }
 
-  const nextMonthYear = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`
+  // Create the update promise and store it
+  const updatePromise = (async () => {
+    try {
+      const supabase = createClient()
 
-  const { data: nextMonthData } = await supabase
-    .from("months")
-    .select("*")
-    .eq("user_id", userData.user.id)
-    .eq("month_year", nextMonthYear)
-    .maybeSingle()
+      const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) return
 
-  if (!nextMonthData) {
-    return
-  }
+      // Calculate next month
+      const [year, month] = normalizedMonthYear.split("-").map(Number)
+      let nextMonth = month + 1
+      let nextYear = year
 
-  const { data: currentMonthData } = await supabase
-    .from("months")
-    .select("*")
-    .eq("user_id", userData.user.id)
-    .eq("month_year", normalizedMonthYear)
-    .maybeSingle()
+      if (nextMonth > 12) {
+        nextMonth = 1
+        nextYear += 1
+      }
 
-  if (!currentMonthData) {
-    return
-  }
+      const nextMonthYear = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`
 
-  // Calculate current month's total expenses
-  const { data: currentExpenses } = await supabase.from("expenses").select("amount").eq("month_id", currentMonthData.id)
+      const { data: nextMonthData } = await supabase
+        .from("months")
+        .select("*")
+        .eq("user_id", userData.user.id)
+        .eq("month_year", nextMonthYear)
+        .maybeSingle()
 
-  const totalExpenses = currentExpenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
-  const currentTotalAvailable = Number(currentMonthData.inflow) + Number(currentMonthData.carryover_from_previous)
-  const newCarryover = Math.max(0, currentTotalAvailable - totalExpenses)
+      if (!nextMonthData) {
+        return
+      }
 
-  // Update next month's carryover
-  const { error } = await supabase
-    .from("months")
-    .update({ carryover_from_previous: newCarryover })
-    .eq("id", nextMonthData.id)
+      const { data: currentMonthData } = await supabase
+        .from("months")
+        .select("*")
+        .eq("user_id", userData.user.id)
+        .eq("month_year", normalizedMonthYear)
+        .maybeSingle()
 
-  if (error) {
-    console.error("[v0] Error updating next month carryover:", error)
-  }
+      if (!currentMonthData) {
+        return
+      }
+
+      // Calculate current month's total expenses
+      const { data: currentExpenses } = await supabase
+        .from("expenses")
+        .select("amount")
+        .eq("month_id", currentMonthData.id)
+
+      const totalExpenses = currentExpenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
+      const currentTotalAvailable = Number(currentMonthData.inflow) + Number(currentMonthData.carryover_from_previous)
+      const newCarryover = Math.max(0, currentTotalAvailable - totalExpenses)
+
+      // Update next month's carryover with retry logic for lock issues
+      let retries = 0
+      const maxRetries = 3
+
+      while (retries < maxRetries) {
+        try {
+          const { error } = await supabase
+            .from("months")
+            .update({ carryover_from_previous: newCarryover })
+            .eq("id", nextMonthData.id)
+
+          if (error) {
+            if (error.message?.includes("Lock broken") && retries < maxRetries - 1) {
+              retries++
+              await new Promise((resolve) => setTimeout(resolve, 100 * retries))
+              continue
+            }
+            console.error("[v0] Error updating next month carryover:", error)
+          }
+          break
+        } catch (err) {
+          if (retries < maxRetries - 1) {
+            retries++
+            await new Promise((resolve) => setTimeout(resolve, 100 * retries))
+          } else {
+            console.error("[v0] Failed to update carryover after retries:", err)
+            break
+          }
+        }
+      }
+    } finally {
+      // Remove from pending map after completion
+      pendingUpdates.delete(normalizedMonthYear)
+    }
+  })()
+
+  pendingUpdates.set(normalizedMonthYear, updatePromise)
+  return updatePromise
 }
