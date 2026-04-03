@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trash2 } from "lucide-react"
@@ -8,6 +9,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useExpenses } from "@/lib/hooks/use-expenses"
 import { mutate } from "swr"
 import { useMonth } from "@/lib/context/month-context"
+import { useCurrentUser } from "@/lib/hooks/use-current-user"
 import { getCategoryColor } from "@/lib/utils/category-colors"
 import type { Expense } from "@/lib/types"
 
@@ -30,7 +32,29 @@ function groupExpensesByDate(expenses: Expense[]) {
 export function ExpenseList() {
   const { toast } = useToast()
   const { currentMonth } = useMonth()
-  const { data: expenses = [], isLoading: loading } = useExpenses(currentMonth)
+  const { data: user } = useCurrentUser()
+  const userId = user?.id ?? null
+
+  const { data: pageExpenses, hasMore, isLoading: loading, page, setPage } = useExpenses(currentMonth)
+
+  // Accumulate expenses across pages so "Load more" appends to the list
+  const [allExpenses, setAllExpenses] = useState<Expense[]>([])
+
+  useEffect(() => {
+    // Reset when month changes
+    setAllExpenses([])
+    setPage(1)
+  }, [currentMonth, setPage])
+
+  useEffect(() => {
+    if (pageExpenses.length > 0) {
+      setAllExpenses((prev) =>
+        page === 1
+          ? pageExpenses
+          : [...prev, ...pageExpenses.filter((e) => !prev.some((p) => p.id === e.id))],
+      )
+    }
+  }, [pageExpenses, page])
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("expenses").delete().eq("id", id)
@@ -46,12 +70,15 @@ export function ExpenseList() {
         title: "Success",
         description: "Expense deleted successfully",
       })
-      mutate(`expenses-${currentMonth}`)
-      mutate(`month-${currentMonth}`)
+      // Reset to page 1 so the list refreshes cleanly
+      setAllExpenses([])
+      setPage(1)
+      mutate(`expenses-${userId}-${currentMonth}-p1`)
+      mutate(`month-${userId}-${currentMonth}`)
     }
   }
 
-  if (loading) {
+  if (loading && page === 1) {
     return (
       <div className="text-center py-12">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
@@ -60,7 +87,7 @@ export function ExpenseList() {
     )
   }
 
-  if (expenses.length === 0) {
+  if (allExpenses.length === 0 && !loading) {
     return (
       <Card className="border-2 border-dashed">
         <div className="py-12 text-center px-4">
@@ -82,7 +109,7 @@ export function ExpenseList() {
     )
   }
 
-  const groupedExpenses = groupExpensesByDate(expenses)
+  const groupedExpenses = groupExpensesByDate(allExpenses)
 
   return (
     <div className="space-y-6 sm:space-y-8" role="region" aria-label="Expense list">
@@ -161,6 +188,18 @@ export function ExpenseList() {
           </div>
         )
       })}
+
+      {hasMore && (
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={loading}
+          >
+            {loading ? "Loading..." : "Load more"}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

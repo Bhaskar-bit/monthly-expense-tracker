@@ -25,15 +25,11 @@ export const goalContributionServerService = {
     }
 
     if (!goals || goals.length === 0) {
-      console.log("[v0] No active goals found for investment distribution")
       return []
     }
 
     // Calculate amount per goal (distribute equally)
     const amountPerGoal = input.amount / goals.length
-    console.log(
-      `[v0] Distributing ₹${input.amount} equally among ${goals.length} goals (₹${amountPerGoal.toFixed(2)} each)`,
-    )
 
     // Create goal contribution records for each goal
     const contributions: GoalContribution[] = []
@@ -69,15 +65,12 @@ export const goalContributionServerService = {
 
         if (updateError) {
           console.error(`[v0] Failed to update goal ${goal.id} current_amount:`, updateError)
-        } else {
-          console.log(`[v0] Updated goal ${goal.id} current_amount from ₹${goal.current_amount || 0} to ₹${newAmount}`)
         }
       } catch (err) {
         console.error(`[v0] Exception processing goal ${goal.id}:`, err)
       }
     }
 
-    console.log(`[v0] Successfully distributed ₹${input.amount} to ${contributions.length} of ${goals.length} goals`)
     return contributions
   },
 }

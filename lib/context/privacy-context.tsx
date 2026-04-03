@@ -21,7 +21,6 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
       setIsMasked(saved === "true")
     }
     setIsLoaded(true)
-    console.log("[v0] Privacy mask loaded from localStorage:", saved)
   }, [])
 
   // Save mask preference to localStorage when it changes
@@ -29,7 +28,6 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
     setIsMasked((prev) => {
       const newValue = !prev
       localStorage.setItem("privacy-mask", String(newValue))
-      console.log("[v0] Privacy mask toggled to:", newValue)
       return newValue
     })
   }

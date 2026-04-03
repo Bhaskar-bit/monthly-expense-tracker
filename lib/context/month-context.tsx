@@ -33,21 +33,14 @@ export function MonthProvider({ children }: { children: ReactNode }) {
   })
 
   useEffect(() => {
-    console.log("[v0] MonthContext - currentMonth changed:", currentMonth)
     const monthParam = searchParams.get("month")
-    console.log("[v0] MonthContext - URL month param:", monthParam)
     if (monthParam !== currentMonth) {
-      console.log("[v0] MonthContext - Updating URL to:", currentMonth)
       router.push(`/dashboard?month=${currentMonth}`, { scroll: false })
     }
   }, [currentMonth, router, searchParams])
 
   const changeMonth = (direction: "prev" | "next") => {
-    console.log("[v0] changeMonth called with direction:", direction)
-    console.log("[v0] Current month before change:", currentMonth)
-
     const [year, month, day] = currentMonth.split("-").map(Number)
-    console.log("[v0] Parsed date components:", { year, month, day })
 
     let newYear = year
     let newMonth = month
@@ -66,11 +59,8 @@ export function MonthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    console.log("[v0] New date components:", { newYear, newMonth })
-
     // Format as YYYY-MM-01
     const newMonthStr = `${newYear}-${String(newMonth).padStart(2, "0")}-01`
-    console.log("[v0] New month calculated:", newMonthStr)
 
     setCurrentMonth(newMonthStr)
   }

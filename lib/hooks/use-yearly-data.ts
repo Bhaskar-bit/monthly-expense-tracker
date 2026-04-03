@@ -3,6 +3,7 @@
 import useSWR from "swr"
 import { supabase } from "@/lib/supabase/client"
 import { EXPENSE_CATEGORIES } from "@/lib/types"
+import { useCurrentUser } from "@/lib/hooks/use-current-user"
 
 interface YearlySummary {
   year: number
@@ -21,8 +22,6 @@ interface YearlySummary {
 }
 
 async function fetchYearlyData(year: string): Promise<YearlySummary> {
-  console.log("[v0] Fetching yearly data for year:", year)
-
   // Get user
   const {
     data: { user },
@@ -38,7 +37,6 @@ async function fetchYearlyData(year: string): Promise<YearlySummary> {
     .lte("month_year", `${year}-12-31`)
     .order("month_year", { ascending: true })
 
-  console.log("[v0] Months fetched:", months?.length || 0, "months")
   if (monthsError) {
     console.error("[v0] Error fetching months:", monthsError)
     throw monthsError
@@ -52,7 +50,6 @@ async function fetchYearlyData(year: string): Promise<YearlySummary> {
     .gte("expense_date", `${year}-01-01`)
     .lte("expense_date", `${year}-12-31`)
 
-  console.log("[v0] Expenses fetched:", expenses?.length || 0, "expenses")
   if (expensesError) {
     console.error("[v0] Error fetching expenses:", expensesError)
     throw expensesError
@@ -62,8 +59,6 @@ async function fetchYearlyData(year: string): Promise<YearlySummary> {
   const totalInflow = months?.reduce((sum, m) => sum + Number(m.inflow), 0) || 0
   const totalCarryover = months?.[0] ? Number(months[0].carryover_from_previous) : 0
   const totalExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0
-
-  console.log("[v0] Totals calculated - Inflow:", totalInflow, "Expenses:", totalExpenses)
 
   // Calculate category totals
   const categoryTotals: Record<string, number> = {}
@@ -93,13 +88,6 @@ async function fetchYearlyData(year: string): Promise<YearlySummary> {
   // Calculate final carryforward (last month's remaining balance)
   const finalCarryforward = monthlyData.length > 0 ? monthlyData[monthlyData.length - 1].remaining : 0
 
-  console.log("[v0] Yearly summary calculated:", {
-    totalInflow,
-    totalExpenses,
-    finalCarryforward,
-    monthsCount: monthlyData.length,
-  })
-
   return {
     year: Number.parseInt(year),
     totalInflow,
@@ -112,7 +100,13 @@ async function fetchYearlyData(year: string): Promise<YearlySummary> {
 }
 
 export function useYearlyData(year: string) {
-  return useSWR(year ? `/api/yearly-data/${year}` : null, () => fetchYearlyData(year), {
-    revalidateOnFocus: false,
-  })
+  // useCurrentUser is backed by SWR so this call is cheap (cached).
+  const { data: user } = useCurrentUser()
+  const userId = user?.id ?? null
+
+  return useSWR(
+    userId && year ? `/api/yearly-data/${userId}/${year}` : null,
+    () => fetchYearlyData(year),
+    { revalidateOnFocus: false },
+  )
 }

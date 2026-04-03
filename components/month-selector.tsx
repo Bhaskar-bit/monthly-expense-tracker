@@ -14,12 +14,9 @@ export function MonthSelector({ userId }: MonthSelectorProps) {
   const { currentMonth, currentMonthDisplay, changeMonth } = useMonth()
 
   useEffect(() => {
-    console.log("[v0] MonthSelector - currentMonth changed to:", currentMonth)
-
     const ensureMonth = async () => {
       try {
         await ensureMonthExistsAction(userId, currentMonth)
-        console.log("[v0] MonthSelector - Month ensured for:", currentMonth)
       } catch (error) {
         console.error("[v0] MonthSelector - Error ensuring month exists:", error)
       }
@@ -29,12 +26,10 @@ export function MonthSelector({ userId }: MonthSelectorProps) {
   }, [currentMonth, userId])
 
   const handlePrevClick = () => {
-    console.log("[v0] MonthSelector - Previous button clicked")
     changeMonth("prev")
   }
 
   const handleNextClick = () => {
-    console.log("[v0] MonthSelector - Next button clicked")
     changeMonth("next")
   }
 

@@ -7,8 +7,6 @@ import { usePrivacyMask } from "@/lib/context/privacy-context"
 export function PrivacyToggle() {
   const { isMasked, toggleMask } = usePrivacyMask()
 
-  console.log("[v0] PrivacyToggle - isMasked:", isMasked)
-
   return (
     <Button variant="outline" size="sm" onClick={toggleMask}>
       {isMasked ? (

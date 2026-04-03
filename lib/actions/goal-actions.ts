@@ -64,8 +64,6 @@ export async function createSavingsGoalAction(
 
     if (error) throw error
 
-    console.log(`[v0] Created savings goal: ${name} (priority: ${nextPriority}, type: ${goalType})`)
-
     revalidateTag("savings-goals")
 
     return { success: true, goal }
@@ -101,8 +99,6 @@ export async function updateGoalPriorityAction(goalId: string, newPriority: numb
       .eq("id", goalId)
 
     if (error) throw error
-
-    console.log(`[v0] Updated goal ${goalId} priority to ${newPriority}`)
 
     revalidateTag("savings-goals")
 
@@ -141,8 +137,6 @@ export async function deleteSavingsGoalAction(goalId: string) {
     // Delete all contributions for this goal
     await supabase.from("goal_contributions").delete().eq("goal_id", goalId)
 
-    console.log(`[v0] Deleted savings goal: ${goalId}`)
-
     revalidateTag("savings-goals")
 
     return { success: true }
@@ -178,8 +172,6 @@ export async function completeSavingsGoalAction(goalId: string) {
       .eq("id", goalId)
 
     if (error) throw error
-
-    console.log(`[v0] Marked goal ${goalId} as completed`)
 
     revalidateTag("savings-goals")
 

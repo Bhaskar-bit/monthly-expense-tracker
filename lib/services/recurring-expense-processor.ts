@@ -14,7 +14,6 @@ export const recurringExpenseProcessor = {
    */
   async processRecurringForMonth(userId: string, targetMonthYear: string) {
     try {
-      console.log(`[v0] Processing recurring expenses for ${targetMonthYear}...`)
       const supabase = await createClient()
 
       const { data: recurringExpenses, error: fetchError } = await supabase
@@ -23,23 +22,12 @@ export const recurringExpenseProcessor = {
         .eq("user_id", userId)
         .eq("is_active", true)
 
-      console.log(`[v0] Found ${recurringExpenses?.length || 0} active recurring expenses`)
-      if (recurringExpenses && recurringExpenses.length > 0) {
-        recurringExpenses.forEach((r: any) => {
-          console.log(
-            `[v0] Recurring expense: id=${r.id}, category=${r.category}, amount=${r.amount}, start_date=${r.start_date}, is_active=${r.is_active}`,
-          )
-        })
-      }
-
       if (fetchError) throw fetchError
 
       const monthParts = targetMonthYear.split("-")
       const year = Number.parseInt(monthParts[0])
       const month = Number.parseInt(monthParts[1] || "1")
       const targetDate = new Date(`${year}-${String(month).padStart(2, "0")}-01T00:00:00Z`)
-
-      console.log(`[v0] Target date calculated as: ${targetDate.toISOString()} for monthYear: ${targetMonthYear}`)
 
       let processedCount = 0
 
@@ -55,7 +43,6 @@ export const recurringExpenseProcessor = {
         }
       }
 
-      console.log(`[v0] Processed ${processedCount} recurring expenses for ${targetMonthYear}`)
       return { success: true, processed: processedCount }
     } catch (error) {
       console.error("[v0] Error processing recurring expenses:", error)
@@ -69,7 +56,6 @@ export const recurringExpenseProcessor = {
    */
   async processRecurringExpensesDaily() {
     try {
-      console.log("[v0] Starting daily recurring expense processing...")
       const supabase = await createClient()
 
       const today = new Date()
@@ -95,7 +81,6 @@ export const recurringExpenseProcessor = {
         }
       }
 
-      console.log(`[v0] Processed ${processedCount} recurring expenses for ${todayString}`)
       return { success: true, processed: processedCount }
     } catch (error) {
       console.error("[v0] Error processing recurring expenses:", error)
@@ -148,23 +133,17 @@ export const recurringExpenseProcessor = {
       ? recurring.end_date.split("-").map(Number)
       : [null, null, null]
 
-    console.log(
-      `[v0] Checking shouldCreateForMonth: recurring_id=${recurring.id}, targetMonth=${targetYear}-${String(targetMonth).padStart(2, "0")}, startMonth=${startYear}-${String(startMonth).padStart(2, "0")}, frequency=${recurring.frequency}`,
-    )
-
     const targetYearMonth = `${targetYear}-${String(targetMonth).padStart(2, "0")}`
     const startYearMonth = `${startYear}-${String(startMonth).padStart(2, "0")}`
     const endYearMonth = endYear && endMonth ? `${endYear}-${String(endMonth).padStart(2, "0")}` : null
 
     // Check if target month is before start month
     if (targetYearMonth < startYearMonth) {
-      console.log(`[v0] Target month ${targetYearMonth} is before start month ${startYearMonth}`)
       return false
     }
 
     // Check if target month is after end month
     if (endYearMonth && targetYearMonth > endYearMonth) {
-      console.log(`[v0] Target month ${targetYearMonth} is after end month ${endYearMonth}`)
       return false
     }
 
@@ -172,7 +151,6 @@ export const recurringExpenseProcessor = {
 
     if (frequency === "monthly") {
       // Monthly: create in every month starting from start month
-      console.log(`[v0] Monthly recurring - should create in ${targetYearMonth}`)
       return true
     } else if (frequency === "quarterly") {
       // Quarterly: create every 3 months
@@ -186,7 +164,6 @@ export const recurringExpenseProcessor = {
       return targetMonth === startMonth
     }
 
-    console.log(`[v0] shouldCreateForMonth returning TRUE for recurring_id=${recurring.id}`)
     return true
   },
 
@@ -205,12 +182,10 @@ export const recurringExpenseProcessor = {
     const lastCreatedDate = recurring.last_created_date ? new Date(recurring.last_created_date) : null
 
     if (todayDate < startDate) {
-      console.log(`[v0] Recurring ${recurring.id}: Today is before start date`)
       return false
     }
 
     if (endDate && todayDate > endDate) {
-      console.log(`[v0] Recurring ${recurring.id}: Today is after end date`)
       return false
     }
 
@@ -222,7 +197,6 @@ export const recurringExpenseProcessor = {
     if (lastCreatedDate) {
       const lastCreatedString = lastCreatedDate.toISOString().split("T")[0]
       if (lastCreatedString === todayString) {
-        console.log(`[v0] Recurring ${recurring.id}: Already created today`)
         return false
       }
     }
@@ -231,7 +205,6 @@ export const recurringExpenseProcessor = {
       return false
     }
 
-    console.log(`[v0] Recurring ${recurring.id}: Should create expense today`)
     return true
   },
 
@@ -316,7 +289,6 @@ export const recurringExpenseProcessor = {
 
       if (updateError) throw updateError
 
-      console.log(`[v0] Created expense from recurring: ${recurring.category} - ₹${recurring.amount}`)
     } catch (error) {
       console.error("[v0] Error creating expense from recurring:", error)
       throw error

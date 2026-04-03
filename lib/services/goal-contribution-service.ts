@@ -107,11 +107,38 @@ export const goalContributionService = {
     supabaseClient?: any,
   ): Promise<AllocationResult[]> {
     const supabase = supabaseClient || (await createClient())
+
+    // Prefer the atomic Postgres RPC (applied via migration
+    // supabase/migrations/20260403000000_allocate_investment_transaction.sql).
+    // Falls back to the JS implementation with compensating rollback if the
+    // function does not exist yet.
+    const { data: rpcData, error: rpcError } = await supabase.rpc("allocate_investment_by_priority", {
+      p_user_id: userId,
+      p_expense_id: expenseId,
+      p_amount: amount,
+      p_expense_date: expenseDate,
+    })
+
+    if (!rpcError) {
+      return (rpcData ?? []).map((row: any) => ({
+        goalId: row.goal_id,
+        allocatedAmount: Number(row.allocated_amount),
+        goalName: row.goal_name,
+        goalCompleted: row.goal_completed,
+      }))
+    }
+
+    // RPC not available yet — fall back to JS with compensating rollback
+    if (rpcError.code !== "PGRST202") {
+      // PGRST202 = function not found; any other error is unexpected
+      console.error("[v0] RPC allocate_investment_by_priority failed:", rpcError)
+      throw rpcError
+    }
+
     const allocations: AllocationResult[] = []
+    const insertedContributionIds: string[] = []
 
     try {
-      // Get all savings goals ordered by priority (ascending)
-      // Include both active and incomplete goals that still need funding
       const { data: goals, error: goalsError } = await supabase
         .from("savings_goals")
         .select("id, name, target_amount, current_amount, priority, status")
@@ -119,89 +146,61 @@ export const goalContributionService = {
         .in("status", ["active", "inactive"])
         .order("priority", { ascending: true })
 
-      if (goalsError) {
-        console.error("[v0] Error fetching savings goals:", goalsError)
-        return []
-      }
-
-      if (!goals || goals.length === 0) {
-        console.log("[v0] No savings goals found for priority allocation")
-        return []
-      }
-
-      console.log(`[v0] Found ${goals.length} goals to allocate to (including both active and inactive)`)
+      if (goalsError) throw goalsError
+      if (!goals || goals.length === 0) return []
 
       let remainingAmount = amount
 
-      // Process each goal in priority order
       for (const goal of goals) {
-        if (remainingAmount <= 0) break // All amount has been allocated
+        if (remainingAmount <= 0) break
 
         const amountNeeded = Number(goal.target_amount) - Number(goal.current_amount || 0)
+        if (amountNeeded <= 0) continue
 
-        if (amountNeeded <= 0) {
-          // Goal is already completed, skip it
-          console.log(`[v0] Goal ${goal.id} ("${goal.name}") already completed (${goal.current_amount}/${goal.target_amount}), skipping`)
-          continue
-        }
-
-        // Allocate as much as possible to this goal
         const allocationAmount = Math.min(remainingAmount, amountNeeded)
         const newCurrentAmount = Number(goal.current_amount || 0) + allocationAmount
         const goalCompleted = newCurrentAmount >= Number(goal.target_amount)
 
-        // Create contribution record
-        const { error: insertError } = await supabase.from("goal_contributions").insert({
-          goal_id: goal.id,
-          user_id: userId,
-          expense_id: expenseId,
-          amount: allocationAmount,
-          contribution_date: expenseDate,
-        })
+        const { data: inserted, error: insertError } = await supabase
+          .from("goal_contributions")
+          .insert({
+            goal_id: goal.id,
+            user_id: userId,
+            expense_id: expenseId,
+            amount: allocationAmount,
+            contribution_date: expenseDate,
+          })
+          .select("id")
+          .single()
 
         if (insertError) {
           console.error(`[v0] Error creating contribution for goal ${goal.id}:`, insertError)
-          continue
+          throw insertError
         }
 
-        // Update goal's current_amount and status
-        const newStatus = goalCompleted ? "completed" : "active"
+        insertedContributionIds.push(inserted.id)
+
         const { error: updateError } = await supabase
           .from("savings_goals")
-          .update({
-            current_amount: newCurrentAmount,
-            status: newStatus,
-          })
+          .update({ current_amount: newCurrentAmount, status: goalCompleted ? "completed" : "active" })
           .eq("id", goal.id)
 
         if (updateError) {
           console.error(`[v0] Error updating goal ${goal.id}:`, updateError)
-          continue
+          throw updateError
         }
 
-        allocations.push({
-          goalId: goal.id,
-          allocatedAmount: allocationAmount,
-          goalName: goal.name,
-          goalCompleted,
-        })
-
-        console.log(
-          `[v0] Allocated ₹${allocationAmount} to goal "${goal.name}" (total: ₹${newCurrentAmount}/${goal.target_amount})`,
-        )
-
+        allocations.push({ goalId: goal.id, allocatedAmount: allocationAmount, goalName: goal.name, goalCompleted })
         remainingAmount -= allocationAmount
-      }
-
-      if (remainingAmount > 0) {
-        console.log(
-          `[v0] ₹${remainingAmount} remaining after allocating to all active goals - allocations complete`,
-        )
       }
 
       return allocations
     } catch (error) {
-      console.error("[v0] Error allocating investment by priority:", error)
+      // Compensating rollback: remove any contributions inserted in this pass
+      if (insertedContributionIds.length > 0) {
+        await supabase.from("goal_contributions").delete().in("id", insertedContributionIds)
+      }
+      console.error("[v0] Error allocating investment by priority (rolled back):", error)
       throw error
     }
   },
@@ -216,8 +215,6 @@ export const goalContributionService = {
     const supabase = supabaseClient || (await createClient())
 
     try {
-      console.log("[v0] Starting priority-based backfill for user:", userId)
-
       // First, check if user has any savings goals at all
       const { data: allGoals, error: goalsCheckError } = await supabase
         .from("savings_goals")
@@ -230,11 +227,8 @@ export const goalContributionService = {
       }
 
       if (!allGoals || allGoals.length === 0) {
-        console.log("[v0] No savings goals exist for user - cannot backfill investments")
         return { synced: 0, skipped: 0 }
       }
-
-      console.log(`[v0] Found ${allGoals.length} savings goals for user`)
 
       // Get all investment expenses ordered by date
       const { data: investmentExpenses, error: expensesError } = await supabase
@@ -249,10 +243,7 @@ export const goalContributionService = {
         return { synced: 0, skipped: 0 }
       }
 
-      console.log(`[v0] Found ${investmentExpenses.length} investment expenses to process`)
-
       if (investmentExpenses.length === 0) {
-        console.log("[v0] No investment expenses found for backfill")
         return { synced: 0, skipped: 0 }
       }
 
@@ -261,8 +252,6 @@ export const goalContributionService = {
 
       // Process each investment expense
       for (const expense of investmentExpenses) {
-        console.log(`[v0] Processing expense ${expense.id} with amount ₹${expense.amount}`)
-        
         // Check if this expense already has contributions
         const { data: existingContributions, error: checkError } = await supabase
           .from("goal_contributions")
@@ -278,7 +267,6 @@ export const goalContributionService = {
 
         // Skip if contributions already exist
         if (existingContributions && existingContributions.length > 0) {
-          console.log(`[v0] Expense ${expense.id} already has contributions, skipping`)
           skipped++
           continue
         }
@@ -293,12 +281,9 @@ export const goalContributionService = {
             supabase,
           )
 
-          console.log(`[v0] Expense ${expense.id} resulted in ${allocations.length} allocations`)
-
           if (allocations && allocations.length > 0) {
             synced++
           } else {
-            console.log(`[v0] No allocations made for expense ${expense.id}`)
             skipped++
           }
         } catch (allocationError) {
@@ -307,9 +292,6 @@ export const goalContributionService = {
         }
       }
 
-      console.log(
-        `[v0] Backfill complete: ${synced} investments synced, ${skipped} skipped`,
-      )
       return { synced, skipped }
     } catch (error) {
       console.error("[v0] Error backfilling investments:", error)
@@ -321,7 +303,7 @@ export const goalContributionService = {
    * Update goal priority when user reorders them
    */
   async updateGoalPriority(goalId: string, newPriority: number): Promise<void> {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: userData } = await supabase.auth.getUser()
 
     if (!userData.user) throw new Error("Not authenticated")
@@ -333,7 +315,6 @@ export const goalContributionService = {
       .eq("user_id", userData.user.id)
 
     if (error) throw error
-    console.log(`[v0] Updated goal ${goalId} priority to ${newPriority}`)
   },
 
   /**

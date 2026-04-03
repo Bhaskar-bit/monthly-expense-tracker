@@ -13,17 +13,10 @@ export async function backfillHistoricalInvestmentsAction() {
       throw new Error("Not authenticated")
     }
 
-    console.log(
-      "[v0] Starting priority-based backfill of historical investments for user:",
-      userData.user.id,
-    )
-
     const result = await goalContributionService.backfillHistoricalInvestmentsByPriority(
       userData.user.id,
       supabase,
     )
-
-    console.log("[v0] Backfill result:", result)
 
     // Revalidate savings goals cache so UI updates
     revalidateTag("savings-goals")
