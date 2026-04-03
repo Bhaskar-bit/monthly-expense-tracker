@@ -2,36 +2,22 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Pencil, Check, X, AlertTriangle, CreditCard } from "lucide-react"
+import { AlertTriangle, CreditCard } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { useToast } from "@/hooks/use-toast"
 import { useMonthData } from "@/lib/hooks/use-month-data"
-import { mutate } from "swr"
 import { useMonth } from "@/lib/context/month-context"
 import { usePrivacyMask } from "@/lib/context/privacy-context"
 
-interface CreditCardBillData {
-  id: string
-  bill_paid_amount: number
-  month_id: string
-}
-
 export function CreditCardBillCard() {
-  const { toast } = useToast()
-  const [isEditing, setIsEditing] = useState(false)
-  const [tempBillPaid, setTempBillPaid] = useState<string>("")
-
   const { currentMonth } = useMonth()
   const { formatAmount } = usePrivacyMask()
 
   const { data: monthData } = useMonthData(currentMonth)
-  const [creditCardData, setCreditCardData] = useState<CreditCardBillData | null>(null)
-  const [expenses, setExpenses] = useState<any[]>([])
+  const [billPaidExpenses, setBillPaidExpenses] = useState<any[]>([])
+  const [creditCardExpenses, setCreditCardExpenses] = useState<any[]>([])
 
-  // Fetch credit card bill and expenses
+  // Fetch expenses for credit card bill paid and credit card usage
   React.useEffect(() => {
     const fetchData = async () => {
       try {
@@ -40,23 +26,17 @@ export function CreditCardBillCard() {
 
         if (!userData.user || !monthData?.id) return
 
-        // Fetch credit card bill
+        // Fetch credit card bill paid (expenses with category "Credit card bills")
         const { data: billData } = await supabase
-          .from("credit_card_bills")
+          .from("expenses")
           .select("*")
           .eq("user_id", userData.user.id)
           .eq("month_id", monthData.id)
-          .maybeSingle()
+          .eq("category", "Credit card bills")
 
-        if (billData) {
-          setCreditCardData(billData)
-          setTempBillPaid(billData.bill_paid_amount.toString())
-        } else {
-          setCreditCardData(null)
-          setTempBillPaid("0")
-        }
+        setBillPaidExpenses(billData || [])
 
-        // Fetch credit card expenses
+        // Fetch credit card expenses (expenses with expense_source "credit_card")
         const { data: expensesData } = await supabase
           .from("expenses")
           .select("*")
@@ -64,7 +44,7 @@ export function CreditCardBillCard() {
           .eq("month_id", monthData.id)
           .eq("expense_source", "credit_card")
 
-        setExpenses(expensesData || [])
+        setCreditCardExpenses(expensesData || [])
       } catch (error) {
         console.error("[v0] Error fetching credit card data:", error)
       }
@@ -73,55 +53,13 @@ export function CreditCardBillCard() {
     fetchData()
   }, [monthData?.id])
 
-  const handleSave = async () => {
-    if (!monthData?.id) return
-
-    const supabase = createClient()
-    const { data: userData } = await supabase.auth.getUser()
-
-    if (!userData.user) return
-
-    try {
-      const newBillPaid = Number.parseFloat(tempBillPaid) || 0
-
-      if (creditCardData?.id) {
-        // Update existing
-        const { error } = await supabase
-          .from("credit_card_bills")
-          .update({ bill_paid_amount: newBillPaid })
-          .eq("id", creditCardData.id)
-
-        if (error) throw error
-      } else {
-        // Create new
-        const { error } = await supabase.from("credit_card_bills").insert({
-          user_id: userData.user.id,
-          month_id: monthData.id,
-          bill_paid_amount: newBillPaid,
-        })
-
-        if (error) throw error
-      }
-
-      setIsEditing(false)
-      toast({
-        title: "Success",
-        description: "Credit card bill updated successfully",
-      })
-
-      mutate(`credit-card-bill-${currentMonth}`)
-    } catch (error) {
-      console.error("[v0] Error updating credit card bill:", error)
-      toast({
-        title: "Error",
-        description: "Failed to update credit card bill",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const billPaidAmount = creditCardData?.bill_paid_amount || Number.parseFloat(tempBillPaid) || 0
-  const creditCardExpensesTotal = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
+  // Calculate bill paid from "Credit card bills" category expenses
+  const billPaidAmount = billPaidExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
+  
+  // Calculate total credit card expenses used
+  const creditCardExpensesTotal = creditCardExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
+  
+  // Calculate remaining balance
   const remainingBill = billPaidAmount - creditCardExpensesTotal
   const isOverspent = remainingBill < 0
 
@@ -140,62 +78,13 @@ export function CreditCardBillCard() {
       <CardContent className="space-y-5">
         {/* Bill Paid Amount */}
         <div className="space-y-2">
-          <Label htmlFor="bill-paid-input" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Bill Paid This Month
           </Label>
-          {isEditing ? (
-            <div className="flex gap-2 flex-col sm:flex-row">
-              <Input
-                id="bill-paid-input"
-                type="number"
-                step="0.01"
-                value={tempBillPaid}
-                onChange={(e) => setTempBillPaid(e.target.value)}
-                placeholder="Enter amount"
-                className="text-lg font-semibold h-12"
-                aria-label="Enter credit card bill paid amount"
-              />
-              <div className="flex gap-2">
-                <Button
-                  size="icon"
-                  variant="default"
-                  onClick={handleSave}
-                  className="h-12 w-12 flex-shrink-0"
-                  aria-label="Save bill amount"
-                >
-                  <Check className="h-5 w-5" aria-hidden="true" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => {
-                    setIsEditing(false)
-                    setTempBillPaid((creditCardData?.bill_paid_amount || 0).toString())
-                  }}
-                  className="h-12 w-12 flex-shrink-0"
-                  aria-label="Cancel editing"
-                >
-                  <X className="h-5 w-5" aria-hidden="true" />
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-lg bg-orange-500/5 border border-orange-500/10">
-              <p className="text-2xl sm:text-3xl font-bold text-orange-600 break-words">{formatAmount(billPaidAmount)}</p>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => {
-                  setIsEditing(true)
-                  setTempBillPaid(billPaidAmount.toString())
-                }}
-                className="h-10 w-10 flex-shrink-0"
-                aria-label="Edit bill amount"
-              >
-                <Pencil className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </div>
-          )}
+          <div className="p-4 rounded-lg bg-orange-500/5 border border-orange-500/10">
+            <p className="text-2xl sm:text-3xl font-bold text-orange-600 break-words">{formatAmount(billPaidAmount)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{billPaidExpenses.length} payment(s)</p>
+          </div>
         </div>
 
         {/* Expenses Used */}
@@ -205,7 +94,7 @@ export function CreditCardBillCard() {
             <p className="text-xl sm:text-2xl font-semibold text-muted-foreground break-words">
               {formatAmount(creditCardExpensesTotal)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">{expenses.length} transaction(s)</p>
+            <p className="text-xs text-muted-foreground mt-1">{creditCardExpenses.length} transaction(s)</p>
           </div>
         </div>
 
