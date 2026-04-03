@@ -12,6 +12,7 @@ export async function createExpenseAction(
   amount: number,
   description: string | null,
   expenseDate: string,
+  expenseSource: "savings_account" | "credit_card" = "savings_account",
 ) {
   try {
     if (amount <= 0) {
@@ -49,6 +50,7 @@ export async function createExpenseAction(
         amount,
         description,
         expense_date: expenseDate,
+        expense_source: expenseSource,
       })
       .select()
       .single()
