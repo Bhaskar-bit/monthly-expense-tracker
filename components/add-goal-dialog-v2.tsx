@@ -35,8 +35,6 @@ export function AddGoalDialogV2({ open: controlledOpen, onOpenChange, onSuccess,
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    console.log("[v0] Adding goal with name:", goalName, "amount:", targetAmount)
-
     if (!goalName.trim()) {
       toast.error("Please enter a goal name")
       return
@@ -50,9 +48,7 @@ export function AddGoalDialogV2({ open: controlledOpen, onOpenChange, onSuccess,
 
     try {
       setIsLoading(true)
-      console.log("[v0] Calling createSavingsGoalAction with:", { goalName, amount, goalType })
       const result = await createSavingsGoalAction(goalName, amount, goalType)
-      console.log("[v0] Goal created successfully:", result)
 
       toast.success(`Savings goal "${goalName}" created successfully!`)
       setGoalName("")

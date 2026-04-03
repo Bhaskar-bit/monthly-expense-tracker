@@ -15,6 +15,7 @@ import { PrivacyProvider } from "@/lib/context/privacy-context"
 import { RecurringExpensesList } from "@/components/recurring-expenses-list"
 import { MobileNav } from "@/components/mobile-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { ErrorBoundary } from "@/components/error-boundary"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -102,13 +103,19 @@ export default async function DashboardPage() {
 
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <div className="min-w-0">
-                  <InflowCard />
+                  <ErrorBoundary section="Income">
+                    <InflowCard />
+                  </ErrorBoundary>
                 </div>
                 <div className="min-w-0">
-                  <MonthlySummary />
+                  <ErrorBoundary section="Monthly Summary">
+                    <MonthlySummary />
+                  </ErrorBoundary>
                 </div>
                 <div className="min-w-0">
-                  <CreditCardBillCard />
+                  <ErrorBoundary section="Credit Card">
+                    <CreditCardBillCard />
+                  </ErrorBoundary>
                 </div>
               </div>
 
@@ -126,10 +133,14 @@ export default async function DashboardPage() {
               </div>
 
               <div className="pt-4">
-                <RecurringExpensesList />
+                <ErrorBoundary section="Recurring Expenses">
+                  <RecurringExpensesList />
+                </ErrorBoundary>
               </div>
 
-              <ExpenseList />
+              <ErrorBoundary section="Expense List">
+                <ExpenseList />
+              </ErrorBoundary>
             </div>
           </main>
         </div>

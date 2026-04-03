@@ -9,11 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Camera, X, Loader2 } from "lucide-react"
+import { Plus, Camera, X, Loader2, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from "@/lib/types"
 import { mutate } from "swr"
 import { useMonth } from "@/lib/context/month-context"
+import { useCurrentUser } from "@/lib/hooks/use-current-user"
 import { ensureMonthExists, updateNextMonthCarryover } from "@/lib/utils/month-utils"
 import { fileService } from "@/lib/services/file-service"
 import { createExpenseAction } from "@/lib/actions/expense-actions"
@@ -29,8 +30,11 @@ export function AddExpenseDialog() {
   const [isLoading, setIsLoading] = useState(false)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [isScanning, setIsScanning] = useState(false)
+  const [scanFailed, setScanFailed] = useState(false)
 
   const { currentMonth } = useMonth()
+  const { data: user } = useCurrentUser()
+  const userId = user?.id ?? null
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -57,6 +61,7 @@ export function AddExpenseDialog() {
 
     try {
       setIsScanning(true)
+      setScanFailed(false)
       let base64 = await fileToBase64(file)
 
       base64 = await fileService.compressImage(base64, 1200, 1200)
@@ -89,12 +94,8 @@ export function AddExpenseDialog() {
         description: "Please review and confirm the extracted details",
       })
     } catch (error) {
-      console.error("[v0] Image upload error:", error)
-      toast({
-        title: "Scan failed",
-        description: error instanceof Error ? error.message : "Failed to scan receipt. Please enter manually.",
-        variant: "destructive",
-      })
+      // Keep the image visible so the user can reference it while filling in manually
+      setScanFailed(true)
     } finally {
       setIsScanning(false)
     }
@@ -102,6 +103,30 @@ export function AddExpenseDialog() {
 
   const clearImage = () => {
     setUploadedImage(null)
+    setScanFailed(false)
+  }
+
+  const retryFromImage = () => {
+    if (!uploadedImage) return
+    setScanFailed(false)
+    // Re-trigger scan with the already-compressed base64 image
+    setIsScanning(true)
+    fetch("/api/scan-receipt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: uploadedImage }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) throw new Error(data.error)
+        setAmount(data.amount?.toString() || "")
+        setDescription(data.description || "")
+        setCategory((data.category as ExpenseCategory) || "")
+        if (data.date) setExpenseDate(data.date)
+        toast({ title: "Receipt scanned!", description: "Please review and confirm the extracted details" })
+      })
+      .catch(() => setScanFailed(true))
+      .finally(() => setIsScanning(false))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -155,8 +180,8 @@ export function AddExpenseDialog() {
       setExpenseSource("savings_account")
       setUploadedImage(null)
 
-      mutate(`expenses-${currentMonth}`)
-      mutate(`month-${currentMonth}`)
+      mutate(`expenses-${userId}-${currentMonth}`)
+      mutate(`month-${userId}-${currentMonth}`)
 
       await updateNextMonthCarryover(currentMonth)
 
@@ -168,7 +193,7 @@ export function AddExpenseDialog() {
         nextYear += 1
       }
       const nextMonthYear = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`
-      mutate(`month-${nextMonthYear}`)
+      mutate(`month-${userId}-${nextMonthYear}`)
     } catch (error) {
       console.error("[v0] Error adding expense:", error)
       toast({
@@ -231,11 +256,24 @@ export function AddExpenseDialog() {
                   <X className="w-4 h-4" />
                 </Button>
                 <img
-                  src={uploadedImage || "/placeholder.svg"}
+                  src={uploadedImage}
                   alt="Receipt"
                   className="w-full h-32 object-contain rounded"
                 />
-                <p className="text-xs text-muted-foreground mt-1 text-center">Receipt uploaded - details extracted</p>
+                {scanFailed ? (
+                  <div className="mt-2 flex flex-col items-center gap-1">
+                    <div className="flex items-center gap-1.5 text-destructive text-xs font-medium">
+                      <AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                      Scan failed — please fill in the details below
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={retryFromImage} disabled={isScanning}>
+                      {isScanning ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+                      Retry scan
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1 text-center">Receipt uploaded — details extracted</p>
+                )}
               </div>
             )}
             <p className="text-xs text-muted-foreground">

@@ -67,8 +67,6 @@ If you cannot extract information, respond with:
       ],
     })
 
-    console.log("[v0] AI Receipt analysis response:", text)
-
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       return NextResponse.json({ error: "Failed to parse receipt" }, { status: 400 })

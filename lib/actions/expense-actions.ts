@@ -19,8 +19,6 @@ export async function createExpenseAction(
       throw new Error("Amount must be greater than zero")
     }
 
-    console.log("[v0] createExpenseAction called with:", { monthId, category, amount, expenseDate })
-
     const supabase = await createClient()
     const { data: userData } = await supabase.auth.getUser()
 
@@ -29,7 +27,6 @@ export async function createExpenseAction(
     }
 
     const correctMonthYear = getMonthForExpenseDate(expenseDate)
-    console.log("[v0] Expense date", expenseDate, "belongs to custom cycle:", correctMonthYear)
 
     // Get or create the correct month
     const { data: monthData } = await supabase
@@ -57,11 +54,8 @@ export async function createExpenseAction(
 
     if (error) throw error
 
-    console.log("[v0] Expense created successfully:", expense.id)
-
     // Allocate investment expenses to savings goals by priority
     if (category === "Investments") {
-      console.log("[v0] Allocating investment expense to savings goals by priority...")
       await goalContributionService.allocateInvestmentByPriority(
         userData.user.id,
         expense.id,
