@@ -196,6 +196,7 @@ export function AddExpenseDialog() {
       setUploadedImage(null)
 
       mutate(`expenses-${userId}-${currentMonth}`)
+      mutate(`all-expenses-${userId}-${currentMonth}`)
       mutate(`month-${userId}-${currentMonth}`)
 
       await updateNextMonthCarryover(currentMonth)

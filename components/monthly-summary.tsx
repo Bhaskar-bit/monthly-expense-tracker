@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EXPENSE_CATEGORIES } from "@/lib/types"
-import { useExpenses } from "@/lib/hooks/use-expenses"
+import { useAllExpenses } from "@/lib/hooks/use-all-expenses"
 import { useMonthData } from "@/lib/hooks/use-month-data"
 import { useMonth } from "@/lib/context/month-context"
 import { usePrivacyMask } from "@/lib/context/privacy-context"
@@ -15,14 +15,21 @@ export function MonthlySummary() {
   const { formatAmount } = usePrivacyMask()
 
   const { data: monthData } = useMonthData(currentMonth)
-  const { data: expenses = [] } = useExpenses(currentMonth)
+  // Use unpaginated hook so totals are always based on ALL expenses for the month,
+  // not just the first 20 that the paginated useExpenses hook returns.
+  const { data: expenses = [] } = useAllExpenses(currentMonth)
 
   // "Spent" only counts savings account outflows.
   // Credit card charges (expense_source = "credit_card") are tracked separately
   // in the Credit Card card — they are NOT a direct cash outflow from savings.
-  // The CC bill payment itself (category = "Credit card bills", source = savings_account)
-  // IS included here because that IS real cash leaving your savings account.
-  const savingsExpenses = expenses.filter((exp) => exp.expense_source !== "credit_card")
+  //
+  // IMPORTANT: "Credit card bills" payments are ALWAYS a savings outflow (you pay
+  // the CC company from your bank), so we include them regardless of what
+  // expense_source value may be stored — this handles legacy data that was saved
+  // before the auto-lock was added.
+  const savingsExpenses = expenses.filter(
+    (exp) => exp.expense_source !== "credit_card" || exp.category === "Credit card bills",
+  )
 
   const totalExpenses = savingsExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
 

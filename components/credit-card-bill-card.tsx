@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertTriangle, CreditCard, Info } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useMonthData } from "@/lib/hooks/use-month-data"
-import { useExpenses } from "@/lib/hooks/use-expenses"
+import { useAllExpenses } from "@/lib/hooks/use-all-expenses"
 import { useMonth } from "@/lib/context/month-context"
 import { usePrivacyMask } from "@/lib/context/privacy-context"
 import { Progress } from "@/components/ui/progress"
@@ -15,21 +15,21 @@ export function CreditCardBillCard() {
   const { currentMonth } = useMonth()
   const { formatAmount } = usePrivacyMask()
 
-  const { data: expenses = [] } = useExpenses(currentMonth)
+  // Use unpaginated hook — we need ALL expenses for accurate totals,
+  // not just the first 20 that the paginated useExpenses hook returns.
+  const { data: expenses = [] } = useAllExpenses(currentMonth)
 
   // ── CC Budget ─────────────────────────────────────────────────────────────
   // The amount you paid FROM savings TO your credit card company this month.
-  // Recorded as category = "Credit card bills", expense_source = "savings_account".
-  // This defines how much CC spending is "covered" for the month.
-  const ccBudget = expenses
-    .filter((exp) => exp.category === "Credit card bills")
-    .reduce((sum, exp) => sum + Number(exp.amount), 0)
-
-  const ccBudgetCount = expenses.filter((exp) => exp.category === "Credit card bills").length
+  // Defined by category = "Credit card bills" — includes legacy rows that may
+  // have been saved with expense_source = "credit_card" before the auto-lock.
+  const ccBillExpenses = expenses.filter((exp) => exp.category === "Credit card bills")
+  const ccBudget = ccBillExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
+  const ccBudgetCount = ccBillExpenses.length
 
   // ── CC Spent ──────────────────────────────────────────────────────────────
   // All expenses charged ON the credit card (expense_source = "credit_card").
-  // Excludes the bill payment itself.
+  // Excludes the bill payment category — those are not card charges.
   const ccExpenses: Expense[] = expenses.filter(
     (exp) => exp.expense_source === "credit_card" && exp.category !== "Credit card bills",
   )
