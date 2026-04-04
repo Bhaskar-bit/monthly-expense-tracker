@@ -88,7 +88,10 @@ export function MonthlySummary() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {categoriesWithExpenses.map((category) => {
                 const amount = categoryTotals[category] || 0
-                const percentage = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
+                // Calculate percentage based on budgetExpenses total, not totalExpenses
+                // because budgetExpenses excludes credit card transactions
+                const budgetTotal = budgetExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
+                const percentage = budgetTotal > 0 ? (amount / budgetTotal) * 100 : 0
                 const colors = getCategoryColor(category)
                 const categoryExpenses = budgetExpenses.filter((exp) => exp.category === category)
 
