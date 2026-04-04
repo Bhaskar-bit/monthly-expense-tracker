@@ -74,6 +74,7 @@ export function ExpenseList() {
       setAllExpenses([])
       setPage(1)
       mutate(`expenses-${userId}-${currentMonth}-p1`)
+      mutate(`all-expenses-${userId}-${currentMonth}`)
       mutate(`month-${userId}-${currentMonth}`)
     }
   }

@@ -5,6 +5,33 @@ import { revalidateTag } from "next/cache"
 import type { ExpenseCategory } from "@/lib/types"
 import { getMonthForExpenseDate } from "@/lib/utils/custom-month-cycle"
 import { goalContributionService } from "@/lib/services/goal-contribution-service"
+import { toSafeMessage } from "@/lib/utils/safe-error"
+
+/**
+ * Writes a row to audit_logs via the service-role-backed Supabase client.
+ * Fails silently — a failed audit log must never block the primary operation.
+ */
+async function writeAuditLog(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  action: string,
+  resourceType: string,
+  resourceId?: string,
+  metadata?: Record<string, unknown>,
+) {
+  try {
+    await supabase.from("audit_logs").insert({
+      user_id: userId,
+      action,
+      resource_type: resourceType,
+      resource_id: resourceId ?? null,
+      metadata: metadata ?? null,
+    })
+  } catch (err) {
+    // Non-blocking: log to server console only
+    console.error("[audit]", action, "failed:", err)
+  }
+}
 
 export async function createExpenseAction(
   monthId: string,
@@ -70,9 +97,18 @@ export async function createExpenseAction(
     revalidateTag(`month-${finalMonthId}`, "seconds")
     revalidateTag("savings-goals", "seconds")
 
+    // Audit trail — non-blocking
+    await writeAuditLog(supabase, userData.user.id, "expense.create", "expense", expense.id, {
+      category,
+      amount,
+      expense_date: expenseDate,
+      expense_source: expenseSource,
+    })
+
     return { success: true, expense }
   } catch (error) {
-    console.error("[v0] Error in createExpenseAction:", error)
-    throw error
+    console.error("[expense-actions] createExpense error:", error)
+    // Re-throw a sanitised message so raw Supabase internals don't reach the client
+    throw new Error(toSafeMessage(error))
   }
 }

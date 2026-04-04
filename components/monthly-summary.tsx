@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EXPENSE_CATEGORIES } from "@/lib/types"
-import { useExpenses } from "@/lib/hooks/use-expenses"
+import { useAllExpenses } from "@/lib/hooks/use-all-expenses"
 import { useMonthData } from "@/lib/hooks/use-month-data"
 import { useMonth } from "@/lib/context/month-context"
 import { usePrivacyMask } from "@/lib/context/privacy-context"
@@ -15,16 +15,27 @@ export function MonthlySummary() {
   const { formatAmount } = usePrivacyMask()
 
   const { data: monthData } = useMonthData(currentMonth)
-  const { data: expenses = [] } = useExpenses(currentMonth)
+  // Use unpaginated hook so totals are always based on ALL expenses for the month,
+  // not just the first 20 that the paginated useExpenses hook returns.
+  const { data: expenses = [] } = useAllExpenses(currentMonth)
 
-  // Filter out credit card expenses from budget calculations
-  // Credit card expenses should only be counted against the credit card bill, not the main budget
-  const savingsAccountExpenses = expenses.filter((exp) => exp.expense_source !== "credit_card")
-  const totalExpenses = savingsAccountExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
+  // "Spent" only counts savings account outflows.
+  // Credit card charges (expense_source = "credit_card") are tracked separately
+  // in the Credit Card card — they are NOT a direct cash outflow from savings.
+  //
+  // IMPORTANT: "Credit card bills" payments are ALWAYS a savings outflow (you pay
+  // the CC company from your bank), so we include them regardless of what
+  // expense_source value may be stored — this handles legacy data that was saved
+  // before the auto-lock was added.
+  const savingsExpenses = expenses.filter(
+    (exp) => exp.expense_source !== "credit_card" || exp.category === "Credit card bills",
+  )
+
+  const totalExpenses = savingsExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
 
   const categoryTotals: Record<string, number> = {}
   EXPENSE_CATEGORIES.forEach((cat) => {
-    categoryTotals[cat] = savingsAccountExpenses
+    categoryTotals[cat] = savingsExpenses
       .filter((exp) => exp.category === cat)
       .reduce((sum, exp) => sum + Number(exp.amount), 0)
   })
@@ -52,6 +63,7 @@ export function MonthlySummary() {
           <div className="space-y-1 p-3 sm:p-4 rounded-lg bg-destructive/5 border border-destructive/10 min-w-0">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">Spent</p>
             <p className="text-lg sm:text-2xl font-bold text-destructive break-words">{formatAmount(totalExpenses)}</p>
+            <p className="text-xs text-muted-foreground">Savings account only</p>
           </div>
         </div>
 
@@ -65,7 +77,7 @@ export function MonthlySummary() {
           {totalAvailable > 0 && (
             <div className="mt-3">
               <Progress
-                value={(remaining / totalAvailable) * 100}
+                value={Math.min((remaining / totalAvailable) * 100, 100)}
                 className="h-2"
                 aria-label={`${((remaining / totalAvailable) * 100).toFixed(1)}% remaining`}
               />
@@ -78,13 +90,13 @@ export function MonthlySummary() {
 
         {categoriesWithExpenses.length > 0 && (
           <div className="pt-4 border-t space-y-4">
-            <h3 className="text-sm font-semibold">Expenses by Category</h3>
+            <h3 className="text-sm font-semibold">Expenses by Category <span className="text-muted-foreground font-normal">(savings account)</span></h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {categoriesWithExpenses.map((category) => {
                 const amount = categoryTotals[category] || 0
                 const percentage = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
                 const colors = getCategoryColor(category)
-                const categoryExpenses = savingsAccountExpenses.filter((exp) => exp.category === category)
+                const categoryExpenses = savingsExpenses.filter((exp) => exp.category === category)
 
                 return (
                   <HoverCard key={category} openDelay={200}>

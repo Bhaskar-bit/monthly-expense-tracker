@@ -10,8 +10,17 @@ export async function GET(request: Request) {
     const cronSecret = process.env.CRON_SECRET
 
     if (!cronSecret) {
-      console.error("CRON_SECRET env var is not set — cron endpoint is unprotected")
+      console.error("[Security] CRON_SECRET env var is not set — cron endpoint is unprotected")
       return new Response("Service Unavailable: CRON_SECRET not configured", { status: 503 })
+    }
+
+    // Warn if the secret is too short to be brute-force resistant.
+    // A minimum of 32 random characters provides ~192 bits of entropy.
+    if (cronSecret.length < 32) {
+      console.error(
+        `[Security] CRON_SECRET is only ${cronSecret.length} characters — ` +
+          "use at least 32 random characters to prevent brute-force attacks.",
+      )
     }
 
     if (authHeader !== `Bearer ${cronSecret}`) {
