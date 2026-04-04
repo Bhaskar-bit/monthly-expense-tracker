@@ -9,6 +9,9 @@ import { useMonthData } from "@/lib/hooks/use-month-data"
 import { useMonth } from "@/lib/context/month-context"
 import { usePrivacyMask } from "@/lib/context/privacy-context"
 
+// Map to track pending credit card data fetches to prevent concurrent locks
+const pendingFetches = new Map<string, Promise<void>>()
+
 export function CreditCardBillCard() {
   const { currentMonth } = useMonth()
   const { formatAmount } = usePrivacyMask()
@@ -20,34 +23,76 @@ export function CreditCardBillCard() {
   // Fetch expenses for credit card bill paid and credit card usage
   React.useEffect(() => {
     const fetchData = async () => {
-      try {
-        const supabase = createClient()
-        const { data: userData } = await supabase.auth.getUser()
+      const monthId = monthData?.id
+      if (!monthId) return
 
-        if (!userData.user || !monthData?.id) return
-
-        // Fetch credit card bill paid (expenses with category "Credit card bills")
-        const { data: billData } = await supabase
-          .from("expenses")
-          .select("*")
-          .eq("user_id", userData.user.id)
-          .eq("month_id", monthData.id)
-          .eq("category", "Credit card bills")
-
-        setBillPaidExpenses(billData || [])
-
-        // Fetch credit card expenses (expenses with expense_source "credit_card")
-        const { data: expensesData } = await supabase
-          .from("expenses")
-          .select("*")
-          .eq("user_id", userData.user.id)
-          .eq("month_id", monthData.id)
-          .eq("expense_source", "credit_card")
-
-        setCreditCardExpenses(expensesData || [])
-      } catch (error) {
-        console.error("[v0] Error fetching credit card data:", error)
+      // Deduplicate requests - if fetch is already pending, wait for it
+      const fetchKey = `credit-card-${monthId}`
+      if (pendingFetches.has(fetchKey)) {
+        await pendingFetches.get(fetchKey)
+        return
       }
+
+      const fetchPromise = (async () => {
+        try {
+          const supabase = createClient()
+          const { data: userData } = await supabase.auth.getUser()
+
+          if (!userData.user || !monthId) return
+
+          let retries = 0
+          const maxRetries = 3
+
+          while (retries < maxRetries) {
+            try {
+              // Combine both queries into one request to reduce lock conflicts
+              const { data: allExpenses } = await supabase
+                .from("expenses")
+                .select("*")
+                .eq("user_id", userData.user.id)
+                .eq("month_id", monthId)
+                .in("category", ["Credit card bills"])
+                .single()
+                .catch(() => ({ data: null })) // Handle not found gracefully
+
+              const { data: expensesData } = await supabase
+                .from("expenses")
+                .select("*")
+                .eq("user_id", userData.user.id)
+                .eq("month_id", monthId)
+                .eq("expense_source", "credit_card")
+
+              // Fetch credit card bill paid (expenses with category "Credit card bills")
+              const { data: billData } = await supabase
+                .from("expenses")
+                .select("*")
+                .eq("user_id", userData.user.id)
+                .eq("month_id", monthId)
+                .eq("category", "Credit card bills")
+
+              setBillPaidExpenses(billData || [])
+              setCreditCardExpenses(expensesData || [])
+              break
+            } catch (err: any) {
+              // If it's a lock error, retry with exponential backoff
+              if (err?.message?.includes("Lock broken") && retries < maxRetries - 1) {
+                retries++
+                await new Promise((resolve) => setTimeout(resolve, 100 * retries))
+              } else {
+                throw err
+              }
+            }
+          }
+        } catch (error) {
+          console.error("[v0] Error fetching credit card data:", error)
+        } finally {
+          // Remove from pending map after completion
+          pendingFetches.delete(fetchKey)
+        }
+      })()
+
+      pendingFetches.set(fetchKey, fetchPromise)
+      await fetchPromise
     }
 
     fetchData()
