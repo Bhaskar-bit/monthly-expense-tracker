@@ -1,18 +1,13 @@
 {
   "recommendations": [
-    // Vercel
     "vercel.vercel-vscode",
-    // Git
     "eamodio.gitlens",
     "mhutchie.git-graph",
-    // TypeScript / Next.js
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
     "bradlc.vscode-tailwindcss",
     "ms-vscode.vscode-typescript-next",
-    // Testing
     "vitest.explorer",
-    // Supabase
     "supabase.vscode-supabase-extension"
   ]
 }
