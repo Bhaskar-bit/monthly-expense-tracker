@@ -130,6 +130,17 @@ export function AddExpenseDialog() {
       .finally(() => setIsScanning(false))
   }
 
+  // When the category is "Credit card bills" (i.e. paying the bill), the source
+  // must always be "savings_account" — you pay your CC bill FROM your bank account.
+  const isBillPayment = category === "Credit card bills"
+
+  const handleCategoryChange = (value: ExpenseCategory) => {
+    setCategory(value)
+    if (value === "Credit card bills") {
+      setExpenseSource("savings_account")
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -287,7 +298,7 @@ export function AddExpenseDialog() {
 
           <div className="space-y-2">
             <Label htmlFor="category">Category *</Label>
-            <Select value={category} onValueChange={(value) => setCategory(value as ExpenseCategory)}>
+            <Select value={category} onValueChange={(value) => handleCategoryChange(value as ExpenseCategory)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
@@ -328,7 +339,11 @@ export function AddExpenseDialog() {
 
           <div className="space-y-2">
             <Label htmlFor="expense-source">Payment Source *</Label>
-            <Select value={expenseSource} onValueChange={(value) => setExpenseSource(value as "savings_account" | "credit_card")}>
+            <Select
+              value={expenseSource}
+              onValueChange={(value) => setExpenseSource(value as "savings_account" | "credit_card")}
+              disabled={isBillPayment}
+            >
               <SelectTrigger id="expense-source">
                 <SelectValue placeholder="Select payment source" />
               </SelectTrigger>
@@ -338,8 +353,10 @@ export function AddExpenseDialog() {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              {expenseSource === "credit_card" 
-                ? "This will be deducted from your credit card bill paid this month" 
+              {isBillPayment
+                ? "Credit card bill payments always come from your savings account"
+                : expenseSource === "credit_card"
+                ? "This purchase will be tracked under your credit card expenses"
                 : "This will be deducted from your available balance"}
             </p>
           </div>

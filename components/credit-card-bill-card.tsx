@@ -36,13 +36,15 @@ export function CreditCardBillCard() {
 
         setBillPaidExpenses(billData || [])
 
-        // Fetch credit card expenses (expenses with expense_source "credit_card")
+        // Fetch credit card expenses (purchases charged ON the card).
+        // Exclude "Credit card bills" category — those are bill payments, not charges.
         const { data: expensesData } = await supabase
           .from("expenses")
           .select("*")
           .eq("user_id", userData.user.id)
           .eq("month_id", monthData.id)
           .eq("expense_source", "credit_card")
+          .neq("category", "Credit card bills")
 
         setCreditCardExpenses(expensesData || [])
       } catch (error) {
