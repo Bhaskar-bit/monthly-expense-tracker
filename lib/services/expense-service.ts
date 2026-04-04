@@ -37,15 +37,36 @@ export const expenseService = {
 
   async deleteExpense(expenseId: string): Promise<void> {
     const supabase = createClient()
-    const { error } = await supabase.from("expenses").delete().eq("id", expenseId)
+    // Explicit user_id guard: defence-in-depth alongside RLS.
+    // Ensures a compromised client token cannot delete another user's expense
+    // even if the caller somehow bypasses the auth layer.
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) throw new Error("Not authenticated")
+
+    const { error } = await supabase
+      .from("expenses")
+      .delete()
+      .eq("id", expenseId)
+      .eq("user_id", userData.user.id) // IDOR guard
     if (error) throw error
   },
 
   async updateExpense(input: UpdateExpenseInput): Promise<Expense> {
     const supabase = createClient()
+    // Explicit user_id guard: prevents IDOR (Insecure Direct Object Reference).
+    // Without this, knowing another user's expense UUID would allow overwriting it.
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) throw new Error("Not authenticated")
+
     const { id, ...updates } = input
 
-    const { data, error } = await supabase.from("expenses").update(updates).eq("id", id).select().single()
+    const { data, error } = await supabase
+      .from("expenses")
+      .update(updates)
+      .eq("id", id)
+      .eq("user_id", userData.user.id) // IDOR guard
+      .select()
+      .single()
 
     if (error) throw error
     return data
