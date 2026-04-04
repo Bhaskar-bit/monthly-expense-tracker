@@ -156,15 +156,15 @@ async function parseXLSX(buffer: Buffer, bank: ImportBank): Promise<RawTransacti
 // ── PDF Parser (requires `pdf-parse` package) ─────────────────────────────────
 
 async function parsePDF(buffer: Buffer): Promise<RawTransaction[]> {
-  let pdfParse: (buf: Buffer) => Promise<{ text: string }>
+  let text: string
   try {
-    pdfParse = (await import("pdf-parse")).default
+    const { PDFParse } = await import("pdf-parse")
+    const parser = new PDFParse({ data: new Uint8Array(buffer) })
+    const result = await parser.getText()
+    text = result.text
   } catch {
     throw new Error("PDF parsing requires the 'pdf-parse' package. Please use CSV export instead.")
   }
-
-  const pdfData = await pdfParse(buffer)
-  const text = pdfData.text
 
   if (!text?.trim()) {
     throw new Error("PDF appears to be empty or image-only. Please use CSV export.")
