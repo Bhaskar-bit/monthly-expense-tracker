@@ -41,7 +41,7 @@ export async function createRecurringExpenseAction(input: CreateRecurringExpense
 
     if (error) throw error
 
-    revalidateTag("recurring-expenses")
+    revalidateTag("recurring-expenses", "seconds")
     return { success: true, data }
   } catch (error) {
     console.error("[v0] Error creating recurring expense:", error)

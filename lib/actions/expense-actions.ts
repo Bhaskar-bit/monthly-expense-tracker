@@ -66,9 +66,9 @@ export async function createExpenseAction(
     }
 
     // Revalidate cache tags for SWR to pick up changes
-    revalidateTag(`expenses-${correctMonthYear}`)
-    revalidateTag(`month-${finalMonthId}`)
-    revalidateTag("savings-goals")
+    revalidateTag(`expenses-${correctMonthYear}`, "seconds")
+    revalidateTag(`month-${finalMonthId}`, "seconds")
+    revalidateTag("savings-goals", "seconds")
 
     return { success: true, expense }
   } catch (error) {

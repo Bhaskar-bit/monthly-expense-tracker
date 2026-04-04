@@ -16,6 +16,7 @@ export interface Expense {
   amount: number
   description: string | null
   expense_date: string
+  expense_source?: "savings_account" | "credit_card"
   created_at: string
   updated_at: string
 }

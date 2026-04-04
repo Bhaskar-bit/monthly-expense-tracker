@@ -73,12 +73,16 @@ export const expenseService = {
 
     if (error) throw error
 
+    const total = count || 0
     return {
       data: data || [],
-      page,
-      pageSize,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / pageSize),
+      pagination: {
+        page,
+        pageSize,
+        total,
+        hasMore: page * pageSize < total,
+        totalPages: Math.ceil(total / pageSize),
+      },
     }
   },
 
@@ -109,12 +113,16 @@ export const expenseService = {
 
     if (error) throw error
 
+    const total = count || 0
     return {
       data: data || [],
-      page,
-      pageSize,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / pageSize),
+      pagination: {
+        page,
+        pageSize,
+        total,
+        hasMore: page * pageSize < total,
+        totalPages: Math.ceil(total / pageSize),
+      },
     }
   },
 }

@@ -19,7 +19,7 @@ export async function backfillHistoricalInvestmentsAction() {
     )
 
     // Revalidate savings goals cache so UI updates
-    revalidateTag("savings-goals")
+    revalidateTag("savings-goals", "seconds")
 
     return {
       success: true,

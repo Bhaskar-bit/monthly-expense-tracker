@@ -64,7 +64,7 @@ export async function createSavingsGoalAction(
 
     if (error) throw error
 
-    revalidateTag("savings-goals")
+    revalidateTag("savings-goals", "seconds")
 
     return { success: true, goal }
   } catch (error) {
@@ -100,7 +100,7 @@ export async function updateGoalPriorityAction(goalId: string, newPriority: numb
 
     if (error) throw error
 
-    revalidateTag("savings-goals")
+    revalidateTag("savings-goals", "seconds")
 
     return { success: true }
   } catch (error) {
@@ -137,7 +137,7 @@ export async function deleteSavingsGoalAction(goalId: string) {
     // Delete all contributions for this goal
     await supabase.from("goal_contributions").delete().eq("goal_id", goalId)
 
-    revalidateTag("savings-goals")
+    revalidateTag("savings-goals", "seconds")
 
     return { success: true }
   } catch (error) {
@@ -173,7 +173,7 @@ export async function completeSavingsGoalAction(goalId: string) {
 
     if (error) throw error
 
-    revalidateTag("savings-goals")
+    revalidateTag("savings-goals", "seconds")
 
     return { success: true }
   } catch (error) {
