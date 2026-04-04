@@ -17,14 +17,20 @@ export function MonthlySummary() {
   const { data: monthData } = useMonthData(currentMonth)
   const { data: expenses = [] } = useExpenses(currentMonth)
 
-  // Filter out credit card expenses from budget calculations
-  // Credit card expenses should only be counted against the credit card bill, not the main budget
-  const savingsAccountExpenses = expenses.filter((exp) => exp.expense_source !== "credit_card")
-  const totalExpenses = savingsAccountExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
+  // Total spent includes ALL expenses (savings account + credit card)
+  const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
+
+  // For budget breakdown, filter out credit card expenses and "Credit card bills" category
+  // These are payment transactions, not actual expenses
+  const budgetExpenses = expenses.filter((exp) => {
+    // Exclude credit card payment transactions (category: "Credit card bills")
+    // and expenses paid with credit card (expense_source: "credit_card")
+    return exp.category !== "Credit card bills" && exp.expense_source !== "credit_card"
+  })
 
   const categoryTotals: Record<string, number> = {}
   EXPENSE_CATEGORIES.forEach((cat) => {
-    categoryTotals[cat] = savingsAccountExpenses
+    categoryTotals[cat] = budgetExpenses
       .filter((exp) => exp.category === cat)
       .reduce((sum, exp) => sum + Number(exp.amount), 0)
   })
@@ -84,7 +90,7 @@ export function MonthlySummary() {
                 const amount = categoryTotals[category] || 0
                 const percentage = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
                 const colors = getCategoryColor(category)
-                const categoryExpenses = savingsAccountExpenses.filter((exp) => exp.category === category)
+                const categoryExpenses = budgetExpenses.filter((exp) => exp.category === category)
 
                 return (
                   <HoverCard key={category} openDelay={200}>
