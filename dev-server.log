@@ -1,0 +1,196 @@
+
+> my-v0-project@0.1.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use by process 54264, using available port 3003 instead.
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Local:         http://localhost:3003
+   - Network:       http://172.20.10.2:3003
+   - Environments: .env.local
+
+ ✓ Starting...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ Ready in 1630ms
+ ○ Compiling / ...
+ GET / 200 in 17.9s (compile: 16.6s, proxy.ts: 1037ms, render: 293ms)
+ ○ Compiling /auth/login ...
+ GET /auth/login 200 in 4.5s (compile: 4.2s, proxy.ts: 44ms, render: 259ms)
+ ○ Compiling /dashboard ...
+ GET /dashboard 200 in 8.0s (compile: 6.0s, proxy.ts: 568ms, render: 1367ms)
+ GET /dashboard?month=2026-03-31 200 in 1744ms (compile: 31ms, proxy.ts: 1100ms, render: 613ms)
+ POST /dashboard 200 in 1831ms (compile: 34ms, proxy.ts: 981ms, render: 817ms)
+ GET /dashboard?month=2026-03-31 200 in 1935ms (compile: 29ms, proxy.ts: 1319ms, render: 587ms)
+ POST /dashboard?month=2026-03-31 200 in 1375ms (compile: 119ms, proxy.ts: 462ms, render: 794ms)
+ GET /dashboard?month=2026-04-01 200 in 1431ms (compile: 38ms, proxy.ts:  ⚠ Found a change in next.config.mjs. Restarting the server to apply the changes...
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Local:         http://localhost:3002
+   - Network:       http://172.20.10.2:3002
+   - Environments: .env.local
+
+ ✓ Starting...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ⨯ Unable to acquire lock at C:\Users\45IN\OneDrive\Documents\expense tracker\monthly-expense-tracker\.next\dev\lock, is another instance of next dev running?
+   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+[?25h
+
+ ✓ Starting...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ⨯ Unable to acquire lock at C:\Users\45IN\OneDrive\Documents\expense tracker\monthly-expense-tracker\.next\dev\lock, is another instance of next dev running?
+   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+[?25h
+e.co
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'ruwerhpovhjkowaujvcj.supabase.co'
+  }
+}
+[TypeError: fetch failed] {
+  [cause]: Error: getaddrinfo ENOTFOUND ruwerhpovhjkowaujvcj.supabase.co
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'ruwerhpovhjkowaujvcj.supabase.co'
+  }
+}
+[TypeError: fetch failed] {
+  [cause]: Error: getaddrinfo ENOTFOUND ruwerhpovhjkowaujvcj.supabase.co
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'ruwerhpovhjkowaujvcj.supabase.co'
+  }
+}
+ GET /auth/login 200 in 42ms (compile: 9ms, proxy.ts: 6ms, render: 27ms)
+ POST /dashboard?month=2026-04-01 303 in 12.3s (compile: 8ms, proxy.ts: 11.8s, render: 502ms)
+ GET /auth/login 200 in 31ms (compile: 4ms, proxy.ts: 8ms, render: 19ms)
+ GET /auth/login 200 in 50ms (compile: 8ms, proxy.ts: 10ms, render: 32ms)
+ POST /auth/login 303 in 107ms (compile: 6ms, proxy.ts: 10ms, render: 91ms)
+ GET /auth/login 200 in 42ms (compile: 8ms, proxy.ts: 7ms, render: 27ms)
+ GET /dashboard 200 in 1567ms (compile: 22ms, proxy.ts: 1107ms, render: 438ms)
+ GET /dashboard?month=2026-03-31 200 in 758ms (compile: 12ms, proxy.ts: 328ms, render: 417ms)
+ GET /dashboard?month=2026-03-31 200 in 1456ms (compile: 10ms, proxy.ts: 1047ms, render: 398ms)
+ POST /dashboard 200 in 1944ms (compile: 11ms, proxy.ts: 1146ms, render: 787ms)
+ POST /dashboard?month=2026-03-31 200 in 749ms (compile: 9ms, proxy.ts: 418ms, render: 322ms)
+ GET /dashboard?month=2026-04-01 200 in 1490ms (compile: 19ms, proxy.ts: 1056ms, render: 415ms)
+ ✓ Compiled in 104ms
+ GET /dashboard?month=2026-04-01 200 in 1708ms (compile: 224ms, proxy.ts: 1382ms, render: 103ms)
+ ✓ Compiled in 116ms
+ GET /dashboard?month=2026-04-01 200 in 981ms (compile: 186ms, proxy.ts: 695ms, render: 100ms)
+ ✓ Compiled in 91ms
+ ✓ Compiled in 82ms
+ GET /dashboard?month=2026-04-01 200 in 1017ms (compile: 246ms, proxy.ts: 687ms, render: 84ms)
+ ✓ Compiled in 79ms
+ GET /dashboard?month=2026-04-01 200 in 572ms (compile: 171ms, proxy.ts: 334ms, render: 67ms)
+ ✓ Compiled in 77ms
+ ✓ Compiled in 72ms
+ ⚠ Found a change in next.config.mjs. Restarting the server to apply the changes...
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Local:         http://localhost:3003
+   - Network:       http://172.20.10.2:3003
+   - Environments: .env.local
+
+ ✓ Starting...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ Ready in 1693ms
+ ○ Compiling /dashboard ...
+ GET /dashboard?month=2026-04-01 200 in 6.9s (compile: 3.7s, proxy.ts: 1518ms, render: 1696ms)
+ GET /dashboard?month=2026-04-01 200 in 4.8s (compile: 2.7s, proxy.ts: 372ms, render: 1777ms)
+ POST /dashboard?month=2026-04-01 200 in 1564ms (compile: 5ms, proxy.ts: 1162ms, render: 397ms)
+ POST /dashboard?month=2026-04-01 200 in 865ms (compile: 5ms, proxy.ts: 348ms, render: 511ms)
+ ✓ Compiled in 84ms
+ ✓ Compiled in 65ms
+ GET /dashboard?month=2026-04-01 200 in 1178ms (compile: 6ms, proxy.ts: 1110ms, render: 61ms)
+ ✓ Compiled in 1409ms
+ ✓ Compiled in 1682ms
+ GET /dashboard?month=2026-04-01 200 in 2.4s (compile: 1171ms, proxy.ts: 873ms, render: 352ms)
+ ✓ Compiled in 1051ms
+ ✓ Compiled in 1574ms
+ ✓ Compiled in 85ms
+ GET /dashboard?month=2026-04-01 200 in 13.4s (compile: 103ms, proxy.ts: 13.2s, render: 54ms)
+ GET /dashboard?month=2026-04-01 200 in 388ms (compile: 5ms, proxy.ts: 343ms, render: 40ms)
+ GET /dashboard?month=2026-04-01 200 in 397ms (compile: 5ms, proxy.ts: 359ms, render: 33ms)
+ GET /dashboard?month=2026-04-01 200 in 396ms (compile: 5ms, proxy.ts: 361ms, render: 29ms)
+ GET /dashboard?month=2026-04-01 200 in 383ms (compile: 6ms, proxy.ts: 337ms, render: 41ms)
+ GET /dashboard?month=2026-04-01 200 in 636ms (compile: 5ms, proxy.ts: 582ms, render: 49ms)
+ GET /dashboard?month=2026-04-01 200 in 426ms (compile: 7ms, proxy.ts: 374ms, render: 46ms)
+ GET /dashboard?month=2026-04-01 200 in 482ms (compile: 4ms, proxy.ts: 437ms, render: 41ms)
+ GET /dashboard?month=2026-04-01 200 in 451ms (compile: 5ms, proxy.ts: 403ms, render: 43ms)
+ GET /dashboard?month=2026-04-01 200 in 434ms (compile: 7ms, proxy.ts: 382ms, render: 45ms)
+ GET /dashboard?month=2026-04-01 200 in 782ms (compile: 5ms, proxy.ts: 733ms, render: 44ms)
+ GET /dashboard?month=2026-04-01 200 in 474ms (compile: 6ms, proxy.ts: 420ms, render: 48ms)
+ GET /dashboard?month=2026-04-01 200 in 835ms (compile: 8ms, proxy.ts: 763ms, render: 64ms)
+ GET /dashboard?month=2026-04-01 200 in 815ms (compile: 4ms, proxy.ts: 763ms, render: 48ms)
+[TypeError: fetch failed] {
+  [cause]: Error: read ECONNRESET
+      at ignore-listed frames {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+ GET /login?redirectTo=%2Fdashboard 404 in 2.6s (compile: 1751ms, proxy.ts: 745ms, render: 79ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 560ms (compile: 38ms, proxy.ts: 449ms, render: 73ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 582ms (compile: 40ms, proxy.ts: 477ms, render: 65ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 462ms (compile: 32ms, proxy.ts: 367ms, render: 62ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 462ms (compile: 35ms, proxy.ts: 365ms, render: 62ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 458ms (compile: 32ms, proxy.ts: 361ms, render: 65ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 457ms (compile: 31ms, proxy.ts: 376ms, render: 50ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 469ms (compile: 37ms, proxy.ts: 372ms, render: 60ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 465ms (compile: 29ms, proxy.ts: 376ms, render: 60ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 476ms (compile: 29ms, proxy.ts: 390ms, render: 56ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 467ms (compile: 29ms, proxy.ts: 384ms, render: 54ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 500ms (compile: 31ms, proxy.ts: 400ms, render: 69ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 473ms (compile: 36ms, proxy.ts: 380ms, render: 57ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 452ms (compile: 33ms, proxy.ts: 368ms, render: 51ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 543ms (compile: 32ms, proxy.ts: 440ms, render: 72ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 507ms (compile: 36ms, proxy.ts: 406ms, render: 64ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 498ms (compile: 33ms, proxy.ts: 414ms, render: 51ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 670ms (compile: 34ms, proxy.ts: 582ms, render: 54ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 1108ms (compile: 34ms, proxy.ts: 809ms, render: 266ms)
+[TypeError: fetch failed] {
+  [cause]: Error [ConnectTimeoutError]: Connect Timeout Error (attempted address: ruwerhpovhjkowaujvcj.supabase.co:443, timeout: 10000ms)
+      at ignore-listed frames {
+    code: 'UND_ERR_CONNECT_TIMEOUT'
+  }
+}
+ GET /login?redirectTo=%2Fdashboard 404 in 10.8s (compile: 92ms, proxy.ts: 10.7s, render: 33ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 4.8s (compile: 15ms, proxy.ts: 4.8s, render: 27ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 588ms (compile: 17ms, proxy.ts: 543ms, render: 27ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 663ms (compile: 14ms, proxy.ts: 623ms, render: 25ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 378ms (compile: 12ms, proxy.ts: 334ms, render: 32ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 449ms (compile: 16ms, proxy.ts: 400ms, render: 33ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 637ms (compile: 30ms, proxy.ts: 590ms, render: 17ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 509ms (compile: 16ms, proxy.ts: 462ms, render: 31ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 546ms (compile: 17ms, proxy.ts: 505ms, render: 24ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 377ms (compile: 13ms, proxy.ts: 333ms, render: 30ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 496ms (compile: 11ms, proxy.ts: 459ms, render: 26ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 611ms (compile: 14ms, proxy.ts: 575ms, render: 22ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 666ms (compile: 13ms, proxy.ts: 627ms, render: 25ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 640ms (compile: 15ms, proxy.ts: 590ms, render: 35ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 577ms (compile: 13ms, proxy.ts: 533ms, render: 31ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 733ms (compile: 13ms, proxy.ts: 695ms, render: 26ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 764ms (compile: 15ms, proxy.ts: 719ms, render: 30ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 943ms (compile: 17ms, proxy.ts: 910ms, render: 16ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 565ms (compile: 15ms, proxy.ts: 528ms, render: 22ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 482ms (compile: 11ms, proxy.ts: 448ms, render: 23ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 497ms (compile: 16ms, proxy.ts: 451ms, render: 30ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 471ms (compile: 18ms, proxy.ts: 418ms, render: 35ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 506ms (compile: 16ms, proxy.ts: 456ms, render: 34ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 589ms (compile: 14ms, proxy.ts: 549ms, render: 27ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 592ms (compile: 12ms, proxy.ts: 562ms, render: 18ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 520ms (compile: 17ms, proxy.ts: 461ms, render: 42ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 489ms (compile: 19ms, proxy.ts: 443ms, render: 27ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 525ms (compile: 15ms, proxy.ts: 480ms, render: 29ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 512ms (compile: 9ms, proxy.ts: 480ms, render: 24ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 1178ms (compile: 15ms, proxy.ts: 1132ms, render: 30ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 1092ms (compile: 18ms, proxy.ts: 1046ms, render: 28ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 849ms (compile: 13ms, proxy.ts: 819ms, render: 18ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 1074ms (compile: 11ms, proxy.ts: 1046ms, render: 17ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 449ms (compile: 16ms, proxy.ts: 412ms, render: 21ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 552ms (compile: 21ms, proxy.ts: 500ms, render: 31ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 514ms (compile: 22ms, proxy.ts: 458ms, render: 33ms)
+ GET /login?redirectTo=%2Fdashboard 404 in 554ms (compile: 14ms, proxy.ts: 436ms, render: 104ms)

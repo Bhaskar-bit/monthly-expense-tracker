@@ -96,6 +96,85 @@ export interface RecurringExpense {
 
 export type RecurringFrequency = "monthly" | "quarterly" | "yearly"
 
+// ── Budget Rules ──────────────────────────────────────────────────────────────
+
+export type RuleType = "threshold" | "percentage" | "velocity"
+export type RuleOperator = "gt" | "gte" | "lt" | "lte"
+export type RulePeriod = "daily" | "weekly" | "monthly"
+export type RuleUnit = "amount" | "pct_of_inflow"
+export type RuleSeverity = "info" | "warning" | "critical"
+
+export interface BudgetRule {
+  id: string
+  user_id: string
+  name: string
+  rule_type: RuleType
+  is_active: boolean
+  condition_category: ExpenseCategory | null
+  condition_operator: RuleOperator
+  condition_value: number
+  condition_period: RulePeriod
+  condition_unit: RuleUnit
+  action_severity: RuleSeverity
+  action_message: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BudgetRuleTrigger {
+  id: string
+  rule_id: string
+  user_id: string
+  month_year: string
+  triggered_at: string
+  trigger_data: {
+    category: string | null
+    current_amount: number
+    threshold: number
+    pct_of_inflow?: number
+  } | null
+  is_acknowledged: boolean
+}
+
+// ── Bank Statement Import ──────────────────────────────────────────────────────
+
+export type ImportSourceType = "csv" | "xlsx" | "pdf" | "image"
+export type ImportStatus = "pending" | "confirmed" | "cancelled"
+export type ImportBank =
+  | "HDFC" | "ICICI" | "SBI" | "Axis" | "Kotak"
+  | "PNB" | "BankOfBaroda" | "Canara" | "IndusInd" | "YesBank"
+  | "Generic"
+
+export interface ImportSession {
+  id: string
+  user_id: string
+  source_type: ImportSourceType
+  source_bank: ImportBank | null
+  status: ImportStatus
+  raw_count: number | null
+  confirmed_count: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ImportTransaction {
+  id: string
+  session_id: string
+  user_id: string
+  raw_description: string | null
+  raw_amount: number
+  raw_date: string
+  raw_type: "debit" | "credit" | null
+  ai_category: ExpenseCategory | null
+  ai_confidence: number | null
+  user_category: ExpenseCategory | null
+  user_description: string | null
+  expense_source: "savings_account" | "credit_card"
+  is_duplicate: boolean
+  is_selected: boolean
+  created_at: string
+}
+
 export interface InvestmentReturn {
   id: string
   user_id: string
