@@ -45,23 +45,6 @@ export function CreditCardBillCard() {
 
           while (retries < maxRetries) {
             try {
-              // Combine both queries into one request to reduce lock conflicts
-              const { data: allExpenses } = await supabase
-                .from("expenses")
-                .select("*")
-                .eq("user_id", userData.user.id)
-                .eq("month_id", monthId)
-                .in("category", ["Credit card bills"])
-                .single()
-                .catch(() => ({ data: null })) // Handle not found gracefully
-
-              const { data: expensesData } = await supabase
-                .from("expenses")
-                .select("*")
-                .eq("user_id", userData.user.id)
-                .eq("month_id", monthId)
-                .eq("expense_source", "credit_card")
-
               // Fetch credit card bill paid (expenses with category "Credit card bills")
               const { data: billData } = await supabase
                 .from("expenses")
@@ -69,6 +52,14 @@ export function CreditCardBillCard() {
                 .eq("user_id", userData.user.id)
                 .eq("month_id", monthId)
                 .eq("category", "Credit card bills")
+
+              // Fetch credit card expenses (expenses with expense_source "credit_card")
+              const { data: expensesData } = await supabase
+                .from("expenses")
+                .select("*")
+                .eq("user_id", userData.user.id)
+                .eq("month_id", monthId)
+                .eq("expense_source", "credit_card")
 
               setBillPaidExpenses(billData || [])
               setCreditCardExpenses(expensesData || [])
