@@ -1,5 +1,4 @@
 {
-  // Format on save
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "[typescript]": {
@@ -8,33 +7,21 @@
   "[typescriptreact]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-
-  // TypeScript
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "typescript.suggest.autoImports": true,
-
-  // Tailwind CSS IntelliSense
   "tailwindCSS.experimental.classRegex": [
     ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
     ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
   ],
-
-  // ESLint
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
-
-  // Git
   "git.autofetch": true,
   "git.confirmSync": false,
   "gitlens.currentLine.enabled": true,
-
-  // Explorer
   "files.exclude": {
     "**/.next": true,
     "**/node_modules": true
   },
-
-  // Vitest
   "vitest.enable": true
 }
