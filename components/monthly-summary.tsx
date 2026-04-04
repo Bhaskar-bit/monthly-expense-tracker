@@ -18,14 +18,17 @@ export function MonthlySummary() {
   const { data: expenses = [] } = useExpenses(currentMonth)
 
   // Total spent includes ALL expenses (savings account + credit card)
+  // This should include expenses with expense_source = "credit_card" AND expenses with category = "Credit card bills"
   const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
 
-  // For budget breakdown, filter out credit card expenses and "Credit card bills" category
-  // These are payment transactions, not actual expenses
+  // For budget breakdown, filter out:
+  // 1. Expenses with expense_source = "credit_card" (credit card usage)
+  // 2. Expenses with category = "Credit card bills" (credit card payment records)
+  // These are payment transactions and credit card usage, not primary budget items
+  // Note: undefined expense_source is treated as savings_account and included in budget
   const budgetExpenses = expenses.filter((exp) => {
-    // Exclude credit card payment transactions (category: "Credit card bills")
-    // and expenses paid with credit card (expense_source: "credit_card")
-    return exp.category !== "Credit card bills" && exp.expense_source !== "credit_card"
+    const source = exp.expense_source || "savings_account" // default to savings_account if undefined
+    return exp.category !== "Credit card bills" && source !== "credit_card"
   })
 
   const categoryTotals: Record<string, number> = {}
