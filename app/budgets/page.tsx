@@ -5,6 +5,8 @@ import { ArrowLeft, Settings, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BudgetsClientContent } from "@/components/budgets-client-content"
+import { BudgetRulesList } from "@/components/budget-rules-list"
+import { MonthProvider } from "@/lib/context/month-context"
 
 export default async function BudgetsPage() {
   const supabase = await createClient()
@@ -55,6 +57,13 @@ export default async function BudgetsPage() {
         </Card>
 
         <BudgetsClientContent userId={data.user.id} />
+
+        {/* Budget Rules Engine */}
+        <div className="mt-10">
+          <MonthProvider>
+            <BudgetRulesList />
+          </MonthProvider>
+        </div>
 
         <Card className="shadow-lg border-0 mt-8">
           <CardHeader>

@@ -173,7 +173,7 @@ export function AddExpenseDialog() {
 
       if (!monthData) throw new Error("Failed to get or create month")
 
-      await createExpenseAction(
+      const result = await createExpenseAction(
         monthData.id,
         category as ExpenseCategory,
         amountValue,
@@ -186,6 +186,19 @@ export function AddExpenseDialog() {
         title: "Success",
         description: "Expense added successfully",
       })
+
+      // Show budget rule alert toasts after a short delay so they stack below the success toast
+      if (result?.firedRules?.length) {
+        for (const rule of result.firedRules) {
+          setTimeout(() => {
+            toast({
+              title: rule.severity === "critical" ? "🚨 Budget Alert" : rule.severity === "warning" ? "⚠️ Budget Warning" : "ℹ️ Budget Info",
+              description: rule.message,
+              variant: rule.severity === "critical" ? "destructive" : "default",
+            })
+          }, 600)
+        }
+      }
 
       setOpen(false)
       setCategory("")

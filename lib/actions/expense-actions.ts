@@ -6,6 +6,7 @@ import type { ExpenseCategory } from "@/lib/types"
 import { getMonthForExpenseDate } from "@/lib/utils/custom-month-cycle"
 import { goalContributionService } from "@/lib/services/goal-contribution-service"
 import { toSafeMessage } from "@/lib/utils/safe-error"
+import { evaluateBudgetRules } from "@/lib/services/budget-rule-engine"
 
 /**
  * Writes a row to audit_logs via the service-role-backed Supabase client.
@@ -97,6 +98,27 @@ export async function createExpenseAction(
     revalidateTag(`month-${finalMonthId}`, "seconds")
     revalidateTag("savings-goals", "seconds")
 
+    // Evaluate budget rules — non-blocking, returns fired rule alerts
+    let firedRules: { ruleId: string; ruleName: string; severity: string; message: string }[] = []
+    try {
+      // Get month data for inflow (needed for percentage rules)
+      const { data: monthRecord } = await supabase
+        .from("months")
+        .select("inflow")
+        .eq("id", finalMonthId)
+        .single()
+
+      firedRules = await evaluateBudgetRules({
+        userId: userData.user.id,
+        monthId: finalMonthId,
+        monthYear: correctMonthYear,
+        inflow: Number(monthRecord?.inflow ?? 0),
+        expenseDate,
+      })
+    } catch (err) {
+      console.error("[expense-actions] rule evaluation error:", err)
+    }
+
     // Audit trail — non-blocking
     await writeAuditLog(supabase, userData.user.id, "expense.create", "expense", expense.id, {
       category,
@@ -105,7 +127,7 @@ export async function createExpenseAction(
       expense_source: expenseSource,
     })
 
-    return { success: true, expense }
+    return { success: true, expense, firedRules }
   } catch (error) {
     console.error("[expense-actions] createExpense error:", error)
     // Re-throw a sanitised message so raw Supabase internals don't reach the client
