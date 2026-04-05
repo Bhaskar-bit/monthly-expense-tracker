@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 
 interface MonthContextType {
   currentMonth: string
@@ -14,6 +14,7 @@ const MonthContext = createContext<MonthContextType | undefined>(undefined)
 export function MonthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
   const [currentMonth, setCurrentMonth] = useState<string>(() => {
     const monthParam = searchParams.get("month")
     if (monthParam) {
@@ -33,11 +34,15 @@ export function MonthProvider({ children }: { children: ReactNode }) {
   })
 
   useEffect(() => {
+    // Only sync the ?month= URL param when on the dashboard page.
+    // On other pages (e.g. /budgets), MonthProvider just provides the
+    // current month value without redirecting.
+    if (pathname !== "/dashboard") return
     const monthParam = searchParams.get("month")
     if (monthParam !== currentMonth) {
       router.push(`/dashboard?month=${currentMonth}`, { scroll: false })
     }
-  }, [currentMonth, router, searchParams])
+  }, [currentMonth, pathname, router, searchParams])
 
   const changeMonth = (direction: "prev" | "next") => {
     const [year, month, day] = currentMonth.split("-").map(Number)
