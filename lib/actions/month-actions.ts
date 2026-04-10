@@ -1,6 +1,23 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { recurringExpenseProcessor } from "@/lib/services/recurring-expense-processor"
+
+/**
+ * Process all active recurring expenses for a given month.
+ * Called when a user navigates to a month so recurring entries
+ * are always present without waiting for the daily cron.
+ * Returns the number of newly created expenses.
+ */
+export async function processRecurringForMonthAction(userId: string, monthYear: string): Promise<number> {
+  try {
+    const result = await recurringExpenseProcessor.processRecurringForMonth(userId, monthYear)
+    return result.processed
+  } catch (error) {
+    console.error("[v0] processRecurringForMonthAction error:", error)
+    return 0
+  }
+}
 
 export async function ensureMonthExistsAction(userId: string, monthYear: string) {
   try {
