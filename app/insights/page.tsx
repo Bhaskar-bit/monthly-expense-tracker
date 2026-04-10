@@ -14,7 +14,7 @@ export default async function InsightsPage() {
     redirect("/auth/login")
   }
 
-  // Fetch last 12 months of data for analytics
+  // Fetch last 12 months ordered oldest→newest
   const { data: months } = await supabase
     .from("months")
     .select("id, month_year, inflow, carryover_from_previous")
@@ -22,18 +22,30 @@ export default async function InsightsPage() {
     .order("month_year", { ascending: true })
     .limit(12)
 
-  const { data: allExpenses } = await supabase
-    .from("expenses")
-    .select("category, amount, expense_date")
-    .eq("user_id", data.user.id)
-    .gte("expense_date", new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString())
+  // Fetch ALL expenses for exactly those months (by month_id) so the date
+  // ranges are perfectly aligned — no mismatch from a rolling 365-day window.
+  const monthIds = (months ?? []).map((m) => m.id)
+  const { data: allExpenses } = monthIds.length > 0
+    ? await supabase
+        .from("expenses")
+        .select("category, amount, expense_date, month_id, expense_source")
+        .eq("user_id", data.user.id)
+        .in("month_id", monthIds)
+    : { data: [] }
+
+  // Apply the same savings-account filter as the dashboard:
+  // CC charges (expense_source = credit_card) are NOT a savings outflow —
+  // they're tracked separately. CC bill payments ARE always a savings outflow.
+  const savingsExpenses = (allExpenses ?? []).filter(
+    (e) => e.expense_source !== "credit_card" || e.category === "Credit card bills",
+  )
 
   // ── Summary stats ─────────────────────────────────────────────────────────
   const totalIncome = months?.reduce((sum, m) => sum + Number(m.inflow), 0) || 0
-  const totalExpensesYearly = allExpenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0
+  const totalExpensesYearly = savingsExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
   const categorySpending: Record<string, number> = {}
 
-  allExpenses?.forEach((exp) => {
+  savingsExpenses.forEach((exp) => {
     categorySpending[exp.category] = (categorySpending[exp.category] || 0) + Number(exp.amount)
   })
 
@@ -42,19 +54,21 @@ export default async function InsightsPage() {
     .slice(0, 5)
 
   // ── Build chart data ───────────────────────────────────────────────────────
-  // Monthly overview: inflow, expenses, savings, savings rate
   const monthlyChartData = (months ?? []).map((month) => {
-    const monthExpenses =
-      allExpenses
-        ?.filter((e) => e.expense_date.startsWith(month.month_year.slice(0, 7)))
-        .reduce((sum, e) => sum + Number(e.amount), 0) ?? 0
+    // Match expenses to this month by month_id (exact, no date string tricks)
+    const monthSavingsExpenses = savingsExpenses
+      .filter((e) => e.month_id === month.id)
+      .reduce((sum, e) => sum + Number(e.amount), 0)
+
     const inflow = Number(month.inflow)
-    const savings = Math.max(0, inflow - monthExpenses)
+    const savings = Math.max(0, inflow - monthSavingsExpenses)
+    // Savings rate = savings / inflow (not against total available which includes carryover)
     const savingsRate = inflow > 0 ? Math.min(100, (savings / inflow) * 100) : 0
+
     return {
       month: month.month_year,
       inflow,
-      expenses: monthExpenses,
+      expenses: monthSavingsExpenses,
       savings,
       savingsRate: Math.round(savingsRate * 10) / 10,
     }
@@ -65,10 +79,9 @@ export default async function InsightsPage() {
   const categoryChartData = (months ?? []).map((month) => {
     const row: { month: string; [category: string]: string | number } = { month: month.month_year }
     top5Categories.forEach((cat) => {
-      row[cat] =
-        allExpenses
-          ?.filter((e) => e.expense_date.startsWith(month.month_year.slice(0, 7)) && e.category === cat)
-          .reduce((sum, e) => sum + Number(e.amount), 0) ?? 0
+      row[cat] = savingsExpenses
+        .filter((e) => e.month_id === month.id && e.category === cat)
+        .reduce((sum, e) => sum + Number(e.amount), 0)
     })
     return row
   })
