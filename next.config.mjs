@@ -1,7 +1,20 @@
 import { fileURLToPath } from "url"
 import path from "path"
+import withPWAInit from "@ducanh2912/next-pwa"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+const withPWA = withPWAInit({
+  dest: "public",
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  // Disable service worker in dev to avoid caching issues during development
+  disable: process.env.NODE_ENV === "development",
+  workboxOptions: {
+    disableDevLogs: true,
+  },
+})
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -12,8 +25,6 @@ const nextConfig = {
     root: __dirname,
   },
   // Defence-in-depth: security headers applied at the CDN / edge cache layer.
-  // The middleware.ts also sets these on every dynamic response; these cover
-  // statically cached pages that bypass middleware.
   async headers() {
     return [
       {
@@ -33,4 +44,4 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+export default withPWA(nextConfig)
