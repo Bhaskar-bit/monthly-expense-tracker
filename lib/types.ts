@@ -8,6 +8,14 @@ export interface Month {
   updated_at: string
 }
 
+export interface InflowHistory {
+  id: string
+  user_id: string
+  month_id: string
+  amount: number
+  recorded_at: string
+}
+
 export interface Expense {
   id: string
   user_id: string
