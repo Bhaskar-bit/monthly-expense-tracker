@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { SpendingTrendsChart } from "@/components/spending-trends-chart"
 
 export default async function InsightsPage() {
   const supabase = await createClient()
@@ -16,9 +17,9 @@ export default async function InsightsPage() {
   // Fetch last 12 months of data for analytics
   const { data: months } = await supabase
     .from("months")
-    .select("month_year, inflow, carryover_from_previous")
+    .select("id, month_year, inflow, carryover_from_previous")
     .eq("user_id", data.user.id)
-    .order("month_year", { ascending: false })
+    .order("month_year", { ascending: true })
     .limit(12)
 
   const { data: allExpenses } = await supabase
@@ -27,7 +28,7 @@ export default async function InsightsPage() {
     .eq("user_id", data.user.id)
     .gte("expense_date", new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString())
 
-  // Calculate insights
+  // ── Summary stats ─────────────────────────────────────────────────────────
   const totalIncome = months?.reduce((sum, m) => sum + Number(m.inflow), 0) || 0
   const totalExpensesYearly = allExpenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0
   const categorySpending: Record<string, number> = {}
@@ -39,6 +40,38 @@ export default async function InsightsPage() {
   const topCategories = Object.entries(categorySpending)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5)
+
+  // ── Build chart data ───────────────────────────────────────────────────────
+  // Monthly overview: inflow, expenses, savings, savings rate
+  const monthlyChartData = (months ?? []).map((month) => {
+    const monthExpenses =
+      allExpenses
+        ?.filter((e) => e.expense_date.startsWith(month.month_year.slice(0, 7)))
+        .reduce((sum, e) => sum + Number(e.amount), 0) ?? 0
+    const inflow = Number(month.inflow)
+    const savings = Math.max(0, inflow - monthExpenses)
+    const savingsRate = inflow > 0 ? Math.min(100, (savings / inflow) * 100) : 0
+    return {
+      month: month.month_year,
+      inflow,
+      expenses: monthExpenses,
+      savings,
+      savingsRate: Math.round(savingsRate * 10) / 10,
+    }
+  })
+
+  // Category breakdown per month (top 5 categories as stacked bars)
+  const top5Categories = topCategories.map(([cat]) => cat)
+  const categoryChartData = (months ?? []).map((month) => {
+    const row: { month: string; [category: string]: string | number } = { month: month.month_year }
+    top5Categories.forEach((cat) => {
+      row[cat] =
+        allExpenses
+          ?.filter((e) => e.expense_date.startsWith(month.month_year.slice(0, 7)) && e.category === cat)
+          .reduce((sum, e) => sum + Number(e.amount), 0) ?? 0
+    })
+    return row
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -65,13 +98,14 @@ export default async function InsightsPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        {/* Summary cards */}
         <div className="grid gap-6 md:grid-cols-3">
           <Card className="shadow-lg border-0">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Annual Income</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-primary">₹{totalIncome.toFixed(0)}</p>
+              <p className="text-3xl font-bold text-primary">₹{totalIncome.toLocaleString("en-IN")}</p>
               <p className="text-xs text-muted-foreground mt-2">Last 12 months</p>
             </CardContent>
           </Card>
@@ -81,7 +115,7 @@ export default async function InsightsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Annual Expenses</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-destructive">₹{totalExpensesYearly.toFixed(0)}</p>
+              <p className="text-3xl font-bold text-destructive">₹{totalExpensesYearly.toLocaleString("en-IN")}</p>
               <p className="text-xs text-muted-foreground mt-2">
                 {totalIncome > 0 ? ((totalExpensesYearly / totalIncome) * 100).toFixed(1) : 0}% of income
               </p>
@@ -93,19 +127,24 @@ export default async function InsightsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Net Savings</CardTitle>
             </CardHeader>
             <CardContent>
-              <p
-                className={`text-3xl font-bold ${totalIncome - totalExpensesYearly >= 0 ? "text-green-600" : "text-red-600"}`}
-              >
-                ₹{(totalIncome - totalExpensesYearly).toFixed(0)}
+              <p className={`text-3xl font-bold ${totalIncome - totalExpensesYearly >= 0 ? "text-green-600" : "text-red-600"}`}>
+                ₹{(totalIncome - totalExpensesYearly).toLocaleString("en-IN")}
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                {totalIncome > 0 ? (((totalIncome - totalExpensesYearly) / totalIncome) * 100).toFixed(1) : 0}% savings
-                rate
+                {totalIncome > 0 ? (((totalIncome - totalExpensesYearly) / totalIncome) * 100).toFixed(1) : 0}% savings rate
               </p>
             </CardContent>
           </Card>
         </div>
 
+        {/* Spending Trends Chart */}
+        <SpendingTrendsChart
+          monthlyData={monthlyChartData}
+          categoryData={categoryChartData}
+          topCategories={top5Categories}
+        />
+
+        {/* Top Categories */}
         <Card className="shadow-lg border-0 mt-8">
           <CardHeader>
             <CardTitle>Top Spending Categories</CardTitle>
@@ -116,11 +155,11 @@ export default async function InsightsPage() {
                 <div key={category}>
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium">{category}</span>
-                    <span className="text-sm font-bold">₹{amount.toFixed(0)}</span>
+                    <span className="text-sm font-bold">₹{amount.toLocaleString("en-IN")}</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
                     <div
-                      className="bg-primary h-2 rounded-full"
+                      className="bg-primary h-2 rounded-full transition-all"
                       style={{ width: `${(amount / (topCategories[0][1] || 1)) * 100}%` }}
                     />
                   </div>
@@ -133,6 +172,7 @@ export default async function InsightsPage() {
           </CardContent>
         </Card>
 
+        {/* Smart Recommendations */}
         <Card className="shadow-lg border-0 mt-8 bg-gradient-to-r from-blue-50 to-blue-50/50 dark:from-blue-950/20 dark:to-blue-950/10">
           <CardHeader>
             <CardTitle className="text-primary">Smart Recommendations</CardTitle>
