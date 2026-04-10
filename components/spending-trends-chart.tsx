@@ -56,8 +56,15 @@ const CATEGORY_COLORS = [
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-popover border rounded-lg shadow-lg p-3 text-sm min-w-[180px]">
-      <p className="font-semibold mb-2 text-foreground">
+    <div
+      style={{
+        background: "var(--popover)",
+        color: "var(--popover-foreground)",
+        border: "1px solid var(--border)",
+      }}
+      className="rounded-lg shadow-lg p-3 text-sm min-w-[180px]"
+    >
+      <p className="font-semibold mb-2" style={{ color: "var(--foreground)" }}>
         {new Date(label).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
       </p>
       {payload.map((entry: any) => (
@@ -66,7 +73,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             <span className="w-2 h-2 rounded-full inline-block" style={{ background: entry.color }} />
             {entry.name}
           </span>
-          <span className="font-medium text-foreground">
+          <span className="font-medium" style={{ color: "var(--foreground)" }}>
             {entry.name === "Savings Rate"
               ? `${Number(entry.value).toFixed(1)}%`
               : `₹${Number(entry.value).toLocaleString("en-IN")}`}
@@ -119,31 +126,34 @@ export function SpendingTrendsChart({ monthlyData, categoryData, topCategories }
         ) : view === "overview" ? (
           <ResponsiveContainer width="100%" height={320}>
             <ComposedChart data={monthlyData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis
                 dataKey="month"
                 tickFormatter={formatMonthLabel}
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={{ stroke: "var(--border)" }}
+                tickLine={{ stroke: "var(--border)" }}
               />
               <YAxis
                 yAxisId="amount"
                 tickFormatter={formatRupee}
-                tick={{ fontSize: 11 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={{ stroke: "var(--border)" }}
+                tickLine={{ stroke: "var(--border)" }}
                 width={56}
               />
               <YAxis
                 yAxisId="rate"
                 orientation="right"
                 tickFormatter={(v) => `${v}%`}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={{ stroke: "var(--border)" }}
+                tickLine={{ stroke: "var(--border)" }}
                 domain={[0, 100]}
-                className="fill-muted-foreground"
                 width={40}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 12, color: "var(--foreground)" }} />
               <Bar yAxisId="amount" dataKey="inflow" name="Inflow" fill="#6366f1" opacity={0.85} radius={[3, 3, 0, 0]} />
               <Bar yAxisId="amount" dataKey="expenses" name="Spent" fill="#ef4444" opacity={0.85} radius={[3, 3, 0, 0]} />
               <Bar yAxisId="amount" dataKey="savings" name="Saved" fill="#10b981" opacity={0.85} radius={[3, 3, 0, 0]} />
@@ -168,21 +178,23 @@ export function SpendingTrendsChart({ monthlyData, categoryData, topCategories }
             ) : (
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={categoryData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis
                     dataKey="month"
                     tickFormatter={formatMonthLabel}
-                    tick={{ fontSize: 11 }}
-                    className="fill-muted-foreground"
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                    axisLine={{ stroke: "var(--border)" }}
+                    tickLine={{ stroke: "var(--border)" }}
                   />
                   <YAxis
                     tickFormatter={formatRupee}
-                    tick={{ fontSize: 11 }}
-                    className="fill-muted-foreground"
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                    axisLine={{ stroke: "var(--border)" }}
+                    tickLine={{ stroke: "var(--border)" }}
                     width={56}
                   />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Legend wrapperStyle={{ fontSize: 11, color: "var(--foreground)" }} />
                   {topCategories.map((cat, idx) => (
                     <Bar
                       key={cat}
@@ -217,7 +229,7 @@ export function SpendingTrendsChart({ monthlyData, categoryData, topCategories }
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Avg Savings Rate</p>
-              <p className="text-base font-bold text-green-600 dark:text-green-400 mt-0.5">
+              <p className="text-base font-bold text-green-600 dark:text-green-400 mt-0.5 tabular-nums">
                 {(monthlyData.reduce((s, m) => s + m.savingsRate, 0) / monthlyData.length).toFixed(1)}%
               </p>
             </div>

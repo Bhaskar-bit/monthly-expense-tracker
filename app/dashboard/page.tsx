@@ -17,6 +17,7 @@ import { MobileNav } from "@/components/mobile-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { ImportWizard } from "@/components/import-wizard"
+import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -29,6 +30,7 @@ export default async function DashboardPage() {
   // Recurring expenses are now processed only once per day via cron job at /api/cron/process-recurring-expenses
 
   return (
+    <>
     <PrivacyProvider>
       <MonthProvider>
         <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 dark:to-accent/10">
@@ -143,5 +145,7 @@ export default async function DashboardPage() {
         </div>
       </MonthProvider>
     </PrivacyProvider>
+    <PWAInstallPrompt />
+    </>
   )
 }
