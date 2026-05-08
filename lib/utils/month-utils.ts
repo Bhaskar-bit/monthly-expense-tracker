@@ -46,10 +46,17 @@ export async function ensureMonthExists(monthYear: string) {
       .maybeSingle()
 
     if (prevMonthData) {
-      // Calculate previous month's total expenses
-      const { data: prevExpenses } = await supabase.from("expenses").select("amount").eq("month_id", prevMonthData.id)
+      // Calculate previous month's total expenses — savings outflows only
+      // (credit card charges are NOT a cash outflow; only CC bill payments are)
+      const { data: prevExpenses } = await supabase
+        .from("expenses")
+        .select("amount, expense_source, category")
+        .eq("month_id", prevMonthData.id)
 
-      const totalExpenses = prevExpenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
+      const savingsExpenses = (prevExpenses || []).filter(
+        (exp) => exp.expense_source !== "credit_card" || exp.category === "Credit card bills",
+      )
+      const totalExpenses = savingsExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
       const prevTotalAvailable = Number(prevMonthData.inflow) + Number(prevMonthData.carryover_from_previous)
       const correctCarryover = Math.max(0, prevTotalAvailable - totalExpenses)
 
@@ -93,10 +100,13 @@ export async function ensureMonthExists(monthYear: string) {
   if (prevMonthData) {
     const { data: prevExpenses } = await supabase
       .from("expenses")
-      .select("amount")
+      .select("amount, expense_source, category")
       .eq("month_id", prevMonthData.id)
 
-    const totalExpenses = prevExpenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
+    const savingsExpenses = (prevExpenses || []).filter(
+      (exp) => exp.expense_source !== "credit_card" || exp.category === "Credit card bills",
+    )
+    const totalExpenses = savingsExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
     const prevTotalAvailable = Number(prevMonthData.inflow) + Number(prevMonthData.carryover_from_previous)
     carryover = prevTotalAvailable - totalExpenses
   }
@@ -182,13 +192,16 @@ export async function updateNextMonthCarryover(currentMonthYear: string) {
         return
       }
 
-      // Calculate current month's total expenses
+      // Calculate current month's total expenses — savings outflows only
       const { data: currentExpenses } = await supabase
         .from("expenses")
-        .select("amount")
+        .select("amount, expense_source, category")
         .eq("month_id", currentMonthData.id)
 
-      const totalExpenses = currentExpenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
+      const savingsExpenses = (currentExpenses || []).filter(
+        (exp) => exp.expense_source !== "credit_card" || exp.category === "Credit card bills",
+      )
+      const totalExpenses = savingsExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
       const currentTotalAvailable = Number(currentMonthData.inflow) + Number(currentMonthData.carryover_from_previous)
       const newCarryover = Math.max(0, currentTotalAvailable - totalExpenses)
 
