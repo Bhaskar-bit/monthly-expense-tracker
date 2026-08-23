@@ -10,8 +10,61 @@
  * are absent in the Node runtime Vercel uses for API routes.
  */
 
-// @ts-ignore - legacy build has no bundled types
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
+/**
+ * pdfjs 6 evaluates `new DOMMatrix()` at module scope. Those globals come from
+ * a browser or from @napi-rs/canvas, and the Vercel Node runtime has neither —
+ * the module throws ReferenceError before a single page is read. Every use of
+ * them is on the canvas rasterisation path, which text extraction never walks,
+ * so stubs are enough to get the module loaded without a 30MB native
+ * dependency. Installed before the import, hence the dynamic import below.
+ */
+function installCanvasStubs(): void {
+  const g = globalThis as Record<string, unknown>;
+
+  if (typeof g.DOMMatrix === 'undefined') {
+    g.DOMMatrix = class DOMMatrixStub {
+      a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+      constructor(init?: number[] | string) {
+        if (Array.isArray(init) && init.length >= 6) {
+          [this.a, this.b, this.c, this.d, this.e, this.f] = init;
+        }
+      }
+      translate() { return this; }
+      scale() { return this; }
+      invertSelf() { return this; }
+      multiplySelf() { return this; }
+      preMultiplySelf() { return this; }
+    };
+  }
+
+  if (typeof g.Path2D === 'undefined') {
+    g.Path2D = class Path2DStub {
+      addPath() {}
+      moveTo() {}
+      lineTo() {}
+      closePath() {}
+    };
+  }
+
+  if (typeof g.ImageData === 'undefined') {
+    g.ImageData = class ImageDataStub {
+      constructor(public width = 0, public height = 0) {}
+    };
+  }
+}
+
+type PdfjsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
+
+let pdfjsPromise: Promise<PdfjsModule> | null = null;
+
+/** Load pdfjs once per process, after the stubs are in place. */
+function loadPdfjs(): Promise<PdfjsModule> {
+  if (!pdfjsPromise) {
+    installCanvasStubs();
+    pdfjsPromise = import('pdfjs-dist/legacy/build/pdf.mjs');
+  }
+  return pdfjsPromise;
+}
 
 export class WrongPasswordError extends Error {
   constructor() {
@@ -33,6 +86,8 @@ export async function extractStatementText(
   data: Uint8Array,
   password?: string
 ): Promise<string> {
+  const pdfjs = await loadPdfjs();
+
   // The loading task, not the document proxy, owns destroy() in pdfjs 6 — keep
   // a reference to it so the worker is torn down on every path out of here.
   const task = pdfjs.getDocument({
