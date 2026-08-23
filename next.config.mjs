@@ -21,6 +21,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // pdfjs-dist ships ESM with dynamic requires the bundler mangles. Leaving it
+  // external means the Node runtime loads it as published, which is the only
+  // way the legacy build works on Vercel.
+  serverExternalPackages: ["pdfjs-dist"],
   turbopack: {
     root: __dirname,
   },

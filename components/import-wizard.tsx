@@ -22,12 +22,50 @@ import type { CategorizedTransaction } from "@/app/api/import/categorize/route"
 
 type Step = "upload" | "review" | "done"
 
+/** What the money is, per the statement classifier. Absent for CSV/XLSX imports. */
+type TxnKind = "EXPENSE" | "INCOME" | "TRANSFER_INTERNAL" | "TRANSFER_SAVINGS"
+
 interface ReviewRow extends CategorizedTransaction {
   id: string
   finalCategory: ExpenseCategory | ""
   finalDescription: string
   expenseSource: "savings_account" | "credit_card"
   selected: boolean
+  kind?: TxnKind
+  is_duplicate?: boolean
+}
+
+/** Summary returned by the ICICI statement route, shown above the review table. */
+interface StatementSummary {
+  sessionId: string
+  parsed: number
+  autoConfirmable: number
+  needsReview: number
+  duplicates: number
+  openingBalance: number | null
+  closingBalance: number | null
+  integrity: { ok: boolean; discrepancy: number; message: string }
+  warnings: string[]
+}
+
+interface StagedRow {
+  id: string
+  raw_description: string | null
+  raw_amount: number
+  raw_date: string
+  raw_type: "debit" | "credit"
+  ai_category: string | null
+  ai_confidence: number | null
+  expense_source: "savings_account" | "credit_card"
+  is_duplicate: boolean
+  is_selected: boolean
+}
+
+const KIND_LABEL: Record<TxnKind, string> = {
+  EXPENSE: "Expense",
+  INCOME: "Income",
+  TRANSFER_INTERNAL: "Internal transfer",
+  TRANSFER_SAVINGS: "Investment",
 }
 
 const BANKS: { value: ImportBank; label: string }[] = [
@@ -62,6 +100,9 @@ export function ImportWizard() {
   const [file, setFile] = useState<File | null>(null)
   const [bank, setBank] = useState<ImportBank>("Generic")
   const [isParsing, setIsParsing] = useState(false)
+  // ICICI e-statements are always encrypted; the password never leaves this form.
+  const [pdfPassword, setPdfPassword] = useState("")
+  const [summary, setSummary] = useState<StatementSummary | null>(null)
 
   // Review step state
   const [rows, setRows] = useState<ReviewRow[]>([])
@@ -77,6 +118,8 @@ export function ImportWizard() {
     setBank("Generic")
     setRows([])
     setImportResult(null)
+    setPdfPassword("")
+    setSummary(null)
   }
 
   // ── Step 1: Upload & Parse ──────────────────────────────────────────────────
@@ -101,8 +144,75 @@ export function ImportWizard() {
     return "csv"
   }
 
+  /** True when the dedicated ICICI statement pipeline should handle this file. */
+  const isIciciStatement = bank === "ICICI" && !!file && getSourceType(file) === "pdf"
+
+  /**
+   * ICICI PDF path.
+   *
+   * Uploads to /api/import/statement, which parses, classifies and stages to
+   * import_transactions — and writes nothing to `expenses`. The review table is
+   * then filled from the staged rows themselves, so what is shown is what was
+   * actually stored, including which rows the server chose to leave unticked.
+   */
+  async function handleStatementParse() {
+    if (!file) return
+    setIsParsing(true)
+    try {
+      const body = new FormData()
+      body.append("file", file)
+      if (pdfPassword) body.append("password", pdfPassword)
+
+      const res = await fetch("/api/import/statement", { method: "POST", body })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Could not read the statement")
+
+      const staged = await fetch(`/api/import/statement?sessionId=${data.sessionId}`)
+      const stagedData = await staged.json()
+      if (!staged.ok) throw new Error(stagedData.error ?? "Could not load staged transactions")
+
+      const kinds: TxnKind[] = data.kinds ?? []
+      setSummary(data as StatementSummary)
+      setRows(
+        (stagedData.transactions as StagedRow[]).map((t, i) => ({
+          id: t.id,
+          raw_description: t.raw_description ?? "",
+          raw_amount: Number(t.raw_amount),
+          raw_date: t.raw_date,
+          raw_type: t.raw_type,
+          ai_category: t.ai_category,
+          ai_confidence: Number(t.ai_confidence ?? 0),
+          finalCategory: (t.ai_category as ExpenseCategory) ?? "",
+          finalDescription: t.raw_description ?? "",
+          expenseSource: t.expense_source,
+          // The server already decided this: only EXPENSE rows arrive ticked.
+          selected: t.is_selected,
+          kind: kinds[i],
+          is_duplicate: t.is_duplicate,
+        })),
+      )
+      setStep("review")
+
+      if (data.warnings?.length) {
+        toast({
+          title: `${data.parsed} transactions staged`,
+          description: `${data.warnings.length} row${data.warnings.length === 1 ? "" : "s"} need a closer look.`,
+        })
+      }
+    } catch (err) {
+      toast({
+        title: "Statement error",
+        description: err instanceof Error ? err.message : "Failed to read the statement",
+        variant: "destructive",
+      })
+    } finally {
+      setIsParsing(false)
+    }
+  }
+
   async function handleParse() {
     if (!file) return
+    if (isIciciStatement) return handleStatementParse()
     setIsParsing(true)
     try {
       const reader = new FileReader()
@@ -293,6 +403,36 @@ export function ImportWizard() {
               <input id="import-file-input" type="file" className="hidden" accept=".csv,.xlsx,.xls,.pdf" onChange={handleFileSelect} />
             </div>
 
+            {/* ICICI e-statement password. Only shown when it can be used. */}
+            {isIciciStatement && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium" htmlFor="statement-password">
+                  Statement password
+                </label>
+                <Input
+                  id="statement-password"
+                  type="password"
+                  autoComplete="off"
+                  value={pdfPassword}
+                  onChange={(e) => setPdfPassword(e.target.value)}
+                  placeholder="First 4 letters of your name + DDMMYYYY"
+                />
+                <p className="text-xs text-muted-foreground">
+                  ICICI e-statements are encrypted. The password is used to open the PDF and is never stored.
+                </p>
+              </div>
+            )}
+
+            {isIciciStatement && (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
+                <p className="font-medium text-foreground">ICICI statement mode</p>
+                <p className="text-muted-foreground">
+                  Transactions are staged for review only — nothing is added to your expenses until you confirm.
+                  Investments and internal transfers arrive unticked.
+                </p>
+              </div>
+            )}
+
             <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
               <p className="font-medium text-foreground">How to export:</p>
               <p>• <strong>HDFC/ICICI/SBI</strong>: Net banking → Statements → Download CSV</p>
@@ -310,6 +450,39 @@ export function ImportWizard() {
         {/* ── Step 2: Review ── */}
         {step === "review" && (
           <div className="flex-1 overflow-hidden flex flex-col">
+            {/* Statement reconciliation banner — ICICI PDF path only */}
+            {summary && (
+              <div className="px-6 py-3 border-b space-y-2 text-xs">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span className="font-medium text-sm">{summary.parsed} parsed</span>
+                  <span className="text-muted-foreground">{summary.autoConfirmable} auto-confirmable</span>
+                  <span className="text-muted-foreground">{summary.needsReview} need review</span>
+                  {summary.duplicates > 0 && (
+                    <span className="text-yellow-600">{summary.duplicates} look like duplicates</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground">
+                  <span>Opening ₹{(summary.openingBalance ?? 0).toLocaleString("en-IN")}</span>
+                  <span>Closing ₹{(summary.closingBalance ?? 0).toLocaleString("en-IN")}</span>
+                </div>
+                <p className={summary.integrity.ok ? "text-muted-foreground" : "text-red-600 font-medium"}>
+                  {summary.integrity.message}
+                </p>
+                {summary.warnings.length > 0 && (
+                  <details className="text-muted-foreground">
+                    <summary className="cursor-pointer text-yellow-600">
+                      {summary.warnings.length} warning{summary.warnings.length === 1 ? "" : "s"}
+                    </summary>
+                    <ul className="mt-1 space-y-0.5 list-disc pl-4">
+                      {summary.warnings.map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            )}
+
             {/* Summary bar */}
             <div className="px-6 py-3 border-b bg-muted/30 flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3 text-sm">
@@ -320,7 +493,7 @@ export function ImportWizard() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => { setStep("upload"); setRows([]) }}>
+                <Button variant="ghost" size="sm" onClick={() => { setStep("upload"); setRows([]); setSummary(null) }}>
                   <ArrowLeft className="w-3.5 h-3.5 mr-1" />Back
                 </Button>
                 <Button
@@ -358,7 +531,15 @@ export function ImportWizard() {
                       <td className="px-3 py-1.5 text-center">
                         <Checkbox checked={row.selected} onCheckedChange={(c) => updateRow(row.id, { selected: !!c })} />
                       </td>
-                      <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap">{row.raw_date}</td>
+                      <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span>{row.raw_date}</span>
+                          {row.kind && row.kind !== "EXPENSE" && (
+                            <span className="text-[10px] text-yellow-600">{KIND_LABEL[row.kind]}</span>
+                          )}
+                          {row.is_duplicate && <span className="text-[10px] text-red-600">Possible duplicate</span>}
+                        </div>
+                      </td>
                       <td className="px-3 py-1.5 max-w-xs">
                         <Input
                           value={row.finalDescription}
