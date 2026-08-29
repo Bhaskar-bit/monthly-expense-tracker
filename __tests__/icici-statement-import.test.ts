@@ -18,20 +18,41 @@ const NO_LEARNED = new Map<string, never>()
 /** One visual row of the statement: text pieces at explicit x offsets. */
 type Row = Array<[x: number, text: string]>
 
+/**
+ * Modelled on a real ICICI savings statement, which matters in two ways the
+ * first version of this fixture got wrong:
+ *
+ *  - The payee name is the FIRST line of the PARTICULARS block, and the date
+ *    is vertically centred against the middle of that block. So in extracted
+ *    text the name appears BEFORE the dated line, not after it.
+ *  - The MODE column is empty; UPI/NEFT/ACH appear inside PARTICULARS.
+ *  - There is no C/F row. Each page ends with a "Total:" row whose figures
+ *    would otherwise be absorbed into the last transaction.
+ */
 const STATEMENT_ROWS: Row[] = [
-  [[40, "DATE"], [110, "MODE**"], [200, "PARTICULARS"], [400, "DEPOSITS"], [470, "WITHDRAWALS"], [550, "BALANCE"]],
-  [[40, "01-04-2026"], [110, "B/F"], [550, "50,000.00"]],
-  [[40, "02-04-2026"], [110, "UPI"], [200, "UPI/412345678901/Pay/swiggy@ybl/SWIGGY"], [470, "450.00"], [550, "49,550.00"]],
+  [[40, "DATE"], [110, "MODE"], [200, "PARTICULARS"], [400, "DEPOSITS"], [470, "WITHDRAWALS"], [550, "BALANCE"]],
+  [[40, "01-04-2026"], [200, "B/F"], [550, "50,000.00"]],
+
   [[200, "SWIGGY LIMITED"]],
-  [[40, "05-04-2026"], [110, "EBA"], [200, "EBA/ISEC/ICICIDIRECT ALLOCATION"], [470, "10,000.00"], [550, "39,550.00"]],
+  [[40, "02-04-2026"], [200, "UPI/412345678901/Pay/swiggy@ybl/AXIS"], [470, "450.00"], [550, "49,550.00"]],
+  [[200, "BANK/743917241826/AXIee91c62b78f048c7b7cf"]],
+  [[200, "9a88f566327b"]],
+
   [[200, "ICICI SECURITIES"]],
-  [[40, "07-04-2026"], [110, "INF"], [200, "INF/INFT/SELF ACCOUNT SWEEP"], [470, "5,000.00"], [550, "34,550.00"]],
+  [[40, "05-04-2026"], [200, "EBA/ISEC/ICICIDIRECT ALLOCATION"], [470, "10,000.00"], [550, "39,550.00"]],
+
   [[200, "OWN SAVINGS ACCOUNT"]],
-  [[40, "12-04-2026"], [110, "UPI"], [200, "UPI/512345678902/Pay/uber@icici/UBER"], [470, "312.50"], [550, "34,237.50"]],
+  [[40, "07-04-2026"], [200, "INF/INFT/SELF ACCOUNT SWEEP"], [470, "5,000.00"], [550, "34,550.00"]],
+
   [[200, "UBER INDIA SYSTEMS"]],
-  [[40, "30-04-2026"], [110, "ACH"], [200, "ACH/SALARY CREDIT ACME LTD"], [400, "1,00,000.00"], [550, "1,34,237.50"]],
+  [[40, "12-04-2026"], [200, "UPI/512345678902/Pay/uber@icici/ICICI"], [470, "312.50"], [550, "34,237.50"]],
+  [[200, "Bank/618365369644/ICI92ca18e187bf44dfb2ee"]],
+  [[200, "0/"]],
+
   [[200, "ACME PAYROLL"]],
-  [[40, "30-04-2026"], [110, "C/F"], [550, "1,34,237.50"]],
+  [[40, "30-04-2026"], [200, "ACH/SALARY CREDIT ACME LTD"], [400, "1,00,000.00"], [550, "1,34,237.50"]],
+
+  [[250, "Total:"], [400, "1,00,000.00"], [470, "15,762.50"], [550, "1,34,237.50"]],
 ]
 
 // ── minimal PDF writer ────────────────────────────────────────────────────────
@@ -90,10 +111,11 @@ describe("extractStatementText", () => {
     const lines = text.split("\n")
 
     expect(lines[1]).toBe("01-04-2026 B/F 50,000.00")
-    expect(lines[2]).toBe("02-04-2026 UPI UPI/412345678901/Pay/swiggy@ybl/SWIGGY 450.00 49,550.00")
-    expect(lines[3]).toBe("SWIGGY LIMITED")
+    // Payee name sits ABOVE the dated line, as ICICI prints it.
+    expect(lines[2]).toBe("SWIGGY LIMITED")
+    expect(lines[3]).toBe("02-04-2026 UPI/412345678901/Pay/swiggy@ybl/AXIS 450.00 49,550.00")
     // The balance column must land at the end of the row, not inside narration.
-    expect(lines[2].endsWith("49,550.00")).toBe(true)
+    expect(lines[3].endsWith("49,550.00")).toBe(true)
   })
 
   /**
@@ -137,6 +159,8 @@ describe("parseIciciStatement", () => {
     const [swiggy, isec, inf, uber, salary] = parsed.transactions
 
     expect(swiggy).toMatchObject({ date: "2026-04-02", amount: 450, direction: "debit", mode: "UPI", reconciled: true })
+    // The payee, not a fragment of the wrapped reference string.
+    expect(swiggy.merchant).not.toMatch(/\d{6,}/)
     expect(swiggy.merchant).toBe("SWIGGY LIMITED")
     expect(swiggy.counterpartyVpa).toBe("swiggy@ybl")
 
@@ -144,6 +168,37 @@ describe("parseIciciStatement", () => {
     expect(inf).toMatchObject({ date: "2026-04-07", amount: 5000, direction: "debit", mode: "INF" })
     expect(uber).toMatchObject({ date: "2026-04-12", amount: 312.5, direction: "debit" })
     expect(salary).toMatchObject({ date: "2026-04-30", amount: 100000, direction: "credit" })
+  })
+
+  /**
+   * The totals row carries three currency figures and no date, so before it was
+   * filtered it was appended to the final transaction — whose "printed amount"
+   * then became the page's withdrawals total. That is where the real
+   * "printed 116905 vs balance movement 13499.99" warning came from.
+   */
+  it("reads the totals row as the closing balance instead of folding it into a transaction", async () => {
+    const text = await extractStatementText(buildPdf(STATEMENT_ROWS))
+    const parsed = parseIciciStatement(text)
+
+    expect(parsed.printedClosingBalance).toBe(134237.5)
+    expect(parsed.transactions.at(-1)).toMatchObject({ amount: 100000, direction: "credit" })
+    expect(parsed.warnings).toEqual([])
+  })
+
+  it("takes the payee name from above the dated line, not the wrapped reference", async () => {
+    const text = await extractStatementText(buildPdf(STATEMENT_ROWS))
+    const { transactions } = parseIciciStatement(text)
+
+    expect(transactions.map((t) => t.merchant)).toEqual([
+      "SWIGGY LIMITED",
+      "ICICI SECURITIES",
+      "OWN SAVINGS ACCOUNT",
+      "UBER INDIA SYSTEMS",
+      "ACME PAYROLL",
+    ])
+    // No merchant may carry a per-transaction reference number: such a key
+    // never recurs, so learned categorisations keyed on it are worthless.
+    for (const t of transactions) expect(t.merchant).not.toMatch(/\d{6,}/)
   })
 
   it("verifies the chain against the printed closing balance", async () => {

@@ -37,6 +37,8 @@ export interface ParseResult {
   periodEnd?: string | null;
   openingBalance: number | null;
   closingBalance: number | null;
+  /** Closing balance as printed on the statement's totals row, if present. */
+  printedClosingBalance: number | null;
   warnings: string[];
 }
 
@@ -56,25 +58,67 @@ function toIso(dd: string, mm: string, yyyy: string): string {
 }
 
 /**
- * Group raw lines into records. A record begins at a line starting with a
- * date and runs until the next such line — this is what makes wrapped
- * narration (the long UPI reference strings) safe to handle.
+ * Column headers, page furniture and the per-page totals row. None of these
+ * carry a date, so without removing them they get appended to whichever
+ * transaction happens to precede them — and the totals row in particular ends
+ * with three currency figures, which then masquerade as that transaction's
+ * amount and balance.
  */
-function groupRecords(text: string): string[][] {
+const NOISE_RE =
+  /^(?:DATE\b|MODE\b|PARTICULARS\b|DEPOSITS\b|WITHDRAWALS\b|BALANCE\b|Total\s*:|Statement of Transactions\b|Page\s+\d+|MODE\*\*)/i;
+
+/**
+ * A line is a payee name if it reads like one: some letters, and none of the
+ * slash-delimited reference structure that every UPI/NEFT/ACH string carries.
+ * Rules out the wrapped tails ("7b", "4e/", "0/") and the reference lines
+ * themselves, both of which sit adjacent to the name in the extracted text.
+ */
+function looksLikeName(line: string): boolean {
+  if (!line || line.includes('/')) return false;
+  if (DATE_RE.test(line)) return false;
+  const letters = line.replace(/[^A-Za-z]/g, '');
+  return letters.length >= 3;
+}
+
+export interface RawRecord {
+  lines: string[];
+  /** Payee name printed above the dated line, when ICICI supplies one. */
+  merchant: string | null;
+}
+
+/**
+ * Group raw lines into records.
+ *
+ * A record begins at a dated line and runs to the next one. The subtlety is
+ * the payee name: ICICI prints it as the FIRST line of the PARTICULARS block,
+ * while the date is vertically centred against the middle of that block. In
+ * extracted text the name therefore appears *before* the dated line, not
+ * after it — so scanning forwards from the date finds a reference fragment
+ * ("BANK/743917241826/AXIee91c...") and never the payee. Look back instead.
+ */
+function groupRecords(text: string): RawRecord[] {
   const lines = text
     .split(/\r?\n/)
     .map(l => l.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter(l => !NOISE_RE.test(l));
 
-  const records: string[][] = [];
-  let current: string[] | null = null;
+  const records: RawRecord[] = [];
+  let current: RawRecord | null = null;
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     if (DATE_RE.test(line)) {
       if (current) records.push(current);
-      current = [line];
+      const previous = lines[i - 1];
+      current = {
+        lines: [line],
+        merchant: previous && looksLikeName(previous)
+          ? previous.replace(/\s+/g, ' ').trim()
+          : null,
+      };
     } else if (current) {
-      current.push(line);
+      current.lines.push(line);
     }
     // Lines before the first date are header/branding — dropped.
   }
@@ -83,19 +127,17 @@ function groupRecords(text: string): string[][] {
 }
 
 /**
- * The payee name, when ICICI supplies one, sits on its own line between the
- * date and the UPI string. Identify it by exclusion: not a date, not a
- * transaction-code string, not purely numeric.
+ * The printed totals row, which is the closing balance this statement format
+ * offers in place of a C/F record. Its last figure is the running balance
+ * carried to the end of the page, so the final occurrence is the statement's
+ * closing balance.
  */
-function extractMerchant(bodyLines: string[]): string | null {
-  for (const line of bodyLines) {
-    if (DATE_RE.test(line)) continue;
-    if (/^(UPI|ACH|NEFT|IMPS|RTGS|ATM|POS|MMT|BIL)\//i.test(line)) continue;
-    if (/^[\d,.\s]+$/.test(line)) continue;
-    if (line.length < 2) continue;
-    return line.replace(/\s+/g, ' ').trim();
-  }
-  return null;
+function extractPrintedClosing(text: string): number | null {
+  const rows = [...text.matchAll(/^\s*Total\s*:.*$/gim)].map(m => m[0]);
+  if (rows.length === 0) return null;
+  const figures = rows[rows.length - 1].match(AMOUNT_RE);
+  if (!figures || figures.length === 0) return null;
+  return toNumber(figures[figures.length - 1]);
 }
 
 function extractVpa(narration: string): string | null {
@@ -135,12 +177,12 @@ export function parseIciciStatement(
   let printedWithdrawals = 0;
 
   for (const record of records) {
-    const joined = record.join(' ');
+    const joined = record.lines.join(' ');
     // Balance-carried markers, not transactions. ICICI prints B/F at the top of
     // the statement and both B/F and C/F around page breaks; treating either as
     // a transaction invents a zero-amount row and drags a warning with it.
     if (/\bB\/F\b/.test(joined) || /\bC\/F\b/.test(joined)) continue;
-    const dateMatch = record[0].match(DATE_RE)!;
+    const dateMatch = record.lines[0].match(DATE_RE)!;
     const date = toIso(dateMatch[1], dateMatch[2], dateMatch[3]);
 
     // The balance is the LAST currency-formatted number in the record.
@@ -199,14 +241,13 @@ export function parseIciciStatement(
     }
 
     const modeMatch = joined.match(MODE_RE);
-    const bodyLines = record.slice(1);
 
     transactions.push({
       date,
       amount: Math.round(amount * 100) / 100,
       direction,
       balanceAfter,
-      merchant: extractMerchant(record[0].replace(DATE_RE, '').trim() ? record : bodyLines),
+      merchant: record.merchant,
       mode: modeMatch ? modeMatch[1] : null,
       counterpartyVpa: extractVpa(joined),
       narration: joined.replace(/\s+/g, ' ').trim(),
@@ -235,6 +276,7 @@ export function parseIciciStatement(
     transactions,
     openingBalance: opening,
     closingBalance: prevBalance,
+    printedClosingBalance: extractPrintedClosing(text),
     warnings,
   };
 }

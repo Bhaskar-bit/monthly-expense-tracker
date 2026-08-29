@@ -139,12 +139,18 @@ export async function POST(request: Request) {
 
   // Closing balance printed on the statement, if present, verifies nothing was
   // dropped. Absent a C/F row, fall back to the printed statement summary.
-  const printedClosing =
+  const cfRow =
     text.match(/\bC\/F\b[^\d]*([\d,]+\.\d{2})/) ??
     text.match(/closing\s+balance[^\d-]*([\d,]+\.\d{2})/i)
 
-  const integrity = printedClosing
-    ? verifyChain(parsed, parseFloat(printedClosing[1].replace(/,/g, "")))
+  // This statement format prints no C/F row — its closing figure lives on the
+  // "Total:" row instead, which the parser now reads.
+  const printedClosing = cfRow
+    ? parseFloat(cfRow[1].replace(/,/g, ""))
+    : parsed.printedClosingBalance
+
+  const integrity = printedClosing !== null
+    ? verifyChain(parsed, printedClosing)
     : {
         ok: true,
         discrepancy: 0,
