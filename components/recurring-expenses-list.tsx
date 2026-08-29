@@ -7,6 +7,7 @@ import { AlertCircle, Trash2, RefreshCw } from "lucide-react"
 import type { RecurringExpense } from "@/lib/types"
 import { recurringExpenseService } from "@/lib/services/recurring-expense-service"
 import { processRecurringForMonthAction } from "@/lib/actions/month-actions"
+import { usePrivacyMask } from "@/lib/context/privacy-context"
 import { useToast } from "@/hooks/use-toast"
 import { mutate } from "swr"
 import { RecurringExpenseDialog } from "./recurring-expense-dialog"
@@ -25,6 +26,7 @@ const fetchRecurringExpenses = async () => {
 }
 
 export function RecurringExpensesList() {
+  const { formatAmount } = usePrivacyMask()
   const { data: recurringExpenses = [], isLoading, error } = useSWR("recurring-expenses", fetchRecurringExpenses)
   const { toast } = useToast()
   const { currentMonth } = useMonth()
@@ -132,7 +134,7 @@ export function RecurringExpensesList() {
                     </div>
                     {expense.description && <p className="text-sm text-muted-foreground mb-2">{expense.description}</p>}
                     <div className="text-sm text-muted-foreground space-y-1">
-                      <p>Amount: ₹{expense.amount.toFixed(2)}</p>
+                      <p>Amount: <span className="tabular-nums">{formatAmount(expense.amount)}</span></p>
                       <p>Started: {new Date(expense.start_date).toLocaleDateString()}</p>
                       {expense.last_created_date && (
                         <p>Last Created: {new Date(expense.last_created_date).toLocaleDateString()}</p>

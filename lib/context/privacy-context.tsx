@@ -32,12 +32,20 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  // Format amount with masking
+  // Format amount with masking.
+  //
+  // Indian digit grouping (₹3,74,621) rather than toFixed's ungrouped
+  // ₹374621.00 — the rest of the app already formats with en-IN, so this was
+  // the odd one out, and an ungrouped six-figure number is genuinely hard to
+  // read at a glance. Paise are shown only when there are any.
   const formatAmount = (amount: number) => {
     if (isMasked) {
       return "₹••••••"
     }
-    return `₹${amount.toFixed(2)}`
+    return `₹${amount.toLocaleString("en-IN", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })}`
   }
 
   // Don't render children until we've loaded the preference from localStorage

@@ -9,6 +9,7 @@ import { usePrivacyMask } from "@/lib/context/privacy-context"
 import { Progress } from "@/components/ui/progress"
 import { getCategoryColor } from "@/lib/utils/category-colors"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import { AnimatedAmount } from "@/components/ui/animated-amount"
 
 export function MonthlySummary() {
   const { currentMonth } = useMonth()
@@ -58,22 +59,21 @@ export function MonthlySummary() {
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <div className="space-y-1 p-3 sm:p-4 rounded-lg bg-primary/5 border border-primary/10 min-w-0">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">Available</p>
-            <p className="text-lg sm:text-2xl font-bold text-primary break-words">{formatAmount(totalAvailable)}</p>
+            <AnimatedAmount value={totalAvailable} className="block text-lg sm:text-2xl font-bold text-primary break-words" />
           </div>
           <div className="space-y-1 p-3 sm:p-4 rounded-lg bg-destructive/5 border border-destructive/10 min-w-0">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">Spent</p>
-            <p className="text-lg sm:text-2xl font-bold text-destructive break-words">{formatAmount(totalExpenses)}</p>
+            <AnimatedAmount value={totalExpenses} className="block text-lg sm:text-2xl font-bold text-destructive break-words" />
             <p className="text-xs text-muted-foreground">Savings account only</p>
           </div>
         </div>
 
         <div className="p-4 sm:p-5 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
           <p className="text-sm font-medium text-muted-foreground mb-2">Remaining Balance</p>
-          <p
-            className={`text-2xl sm:text-3xl font-bold break-words ${remaining >= 0 ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}
-          >
-            {formatAmount(remaining)}
-          </p>
+          <AnimatedAmount
+            value={remaining}
+            className={`block text-2xl sm:text-3xl font-bold break-words ${remaining >= 0 ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}
+          />
           {totalAvailable > 0 && (
             <div className="mt-3">
               <Progress
@@ -104,7 +104,7 @@ export function MonthlySummary() {
                       <div className="p-3 rounded-lg border border-muted/40 bg-muted/30 hover:bg-muted/50 transition-colors space-y-2 cursor-pointer">
                         <div className="flex items-start justify-between gap-2">
                           <span className={`font-medium text-sm line-clamp-2 ${colors.text}`}>{category}</span>
-                          <span className="font-semibold text-sm flex-shrink-0">₹{amount.toFixed(2)}</span>
+                          <span className="font-semibold text-sm flex-shrink-0 tabular-nums">{formatAmount(amount)}</span>
                         </div>
                         <div className="relative h-2 bg-muted/50 rounded-full overflow-hidden">
                           <div
@@ -144,7 +144,7 @@ export function MonthlySummary() {
                                 </p>
                               </div>
                               <span className="text-sm font-semibold flex-shrink-0">
-                                ₹{Number(expense.amount).toFixed(2)}
+                                {formatAmount(Number(expense.amount))}
                               </span>
                             </div>
                           ))}

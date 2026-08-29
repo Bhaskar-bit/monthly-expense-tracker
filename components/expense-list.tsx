@@ -11,7 +11,12 @@ import { mutate } from "swr"
 import { useMonth } from "@/lib/context/month-context"
 import { useCurrentUser } from "@/lib/hooks/use-current-user"
 import { getCategoryColor } from "@/lib/utils/category-colors"
+import { usePrivacyMask } from "@/lib/context/privacy-context"
 import type { Expense } from "@/lib/types"
+import { cn } from "@/lib/utils"
+
+/** Matches the row exit transition below. */
+const EXIT_MS = 200
 
 function groupExpensesByDate(expenses: Expense[]) {
   const grouped = expenses.reduce(
@@ -31,6 +36,7 @@ function groupExpensesByDate(expenses: Expense[]) {
 
 export function ExpenseList() {
   const { toast } = useToast()
+  const { formatAmount } = usePrivacyMask()
   const { currentMonth } = useMonth()
   const { data: user } = useCurrentUser()
   const userId = user?.id ?? null
@@ -56,27 +62,47 @@ export function ExpenseList() {
     }
   }, [pageExpenses, page])
 
+  // Rows on their way out. Kept mounted for the length of the exit transition so
+  // the row can animate away instead of vanishing between frames.
+  const [removingIds, setRemovingIds] = useState<Set<string>>(new Set())
+
   const handleDelete = async (id: string) => {
+    // Optimistic: play the row out and drop it immediately. The previous version
+    // emptied the whole list and refetched page 1, so deleting one expense threw
+    // the entire list away and rebuilt it — a spinner and a scroll jump for a
+    // change the user had already committed to.
+    setRemovingIds((prev) => new Set(prev).add(id))
+    await new Promise((resolve) => setTimeout(resolve, EXIT_MS))
+
+    const snapshot = allExpenses
+    setAllExpenses((prev) => prev.filter((e) => e.id !== id))
+    setRemovingIds((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+
     const { error } = await supabase.from("expenses").delete().eq("id", id)
 
     if (error) {
+      // Put it back. An optimistic update that silently loses the row on failure
+      // is worse than no optimism at all.
+      setAllExpenses(snapshot)
       toast({
         title: "Error",
         description: "Failed to delete expense",
         variant: "destructive",
       })
-    } else {
-      toast({
-        title: "Success",
-        description: "Expense deleted successfully",
-      })
-      // Reset to page 1 so the list refreshes cleanly
-      setAllExpenses([])
-      setPage(1)
-      mutate(`expenses-${userId}-${currentMonth}-p1`)
-      mutate(`all-expenses-${userId}-${currentMonth}`)
-      mutate(`month-${userId}-${currentMonth}`)
+      return
     }
+
+    toast({
+      title: "Success",
+      description: "Expense deleted successfully",
+    })
+    mutate(`expenses-${userId}-${currentMonth}-p1`)
+    mutate(`all-expenses-${userId}-${currentMonth}`)
+    mutate(`month-${userId}-${currentMonth}`)
   }
 
   if (loading && page === 1) {
@@ -135,7 +161,7 @@ export function ExpenseList() {
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-foreground text-sm sm:text-base">{formattedDate}</h3>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  {dateExpenses.length} {dateExpenses.length === 1 ? "expense" : "expenses"} • ₹{dayTotal.toFixed(2)}
+                  {dateExpenses.length} {dateExpenses.length === 1 ? "expense" : "expenses"} • {formatAmount(dayTotal)}
                 </p>
               </div>
             </div>
@@ -143,12 +169,17 @@ export function ExpenseList() {
             <div className="space-y-3 ps-2 sm:ps-0">
               {dateExpenses.map((expense) => {
                 const colors = getCategoryColor(expense.category)
+                const isRemoving = removingIds.has(expense.id)
                 return (
                   <Card
                     key={expense.id}
-                    className={`group hover:shadow-md transition-all duration-200 border-l-4 ${colors.border}`}
+                    className={cn(
+                      "group border-l-4 expense-row",
+                      isRemoving ? "expense-row-exit" : "hover:shadow-md",
+                      colors.border,
+                    )}
                     role="article"
-                    aria-label={`${expense.category} expense of ₹${Number(expense.amount).toFixed(2)}`}
+                    aria-label={`${expense.category} expense of ${formatAmount(Number(expense.amount))}`}
                   >
                     <div className="p-3 sm:p-4">
                       <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3 sm:gap-4">
@@ -166,8 +197,8 @@ export function ExpenseList() {
                         </div>
                         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 self-end sm:self-start">
                           <div className="text-right">
-                            <p className="text-lg sm:text-xl font-bold text-foreground">
-                              ₹{Number(expense.amount).toFixed(2)}
+                            <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
+                              {formatAmount(Number(expense.amount))}
                             </p>
                           </div>
                           <Button
@@ -175,7 +206,7 @@ export function ExpenseList() {
                             size="icon"
                             onClick={() => handleDelete(expense.id)}
                             className="opacity-0 group-hover:opacity-100 transition-opacity h-9 w-9 sm:h-10 sm:w-10 focus:opacity-100"
-                            aria-label={`Delete expense for ₹${Number(expense.amount).toFixed(2)}`}
+                            aria-label={`Delete expense for ${formatAmount(Number(expense.amount))}`}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" aria-hidden="true" />
                           </Button>
