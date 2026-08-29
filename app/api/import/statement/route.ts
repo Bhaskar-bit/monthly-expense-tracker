@@ -130,6 +130,11 @@ export async function POST(request: Request) {
   // --- parse ------------------------------------------------------------
   const parsed = parseIciciStatement(text)
 
+  const wantsDiagnostics = form.get("diagnose") === "1"
+  const extractedLines = wantsDiagnostics
+    ? text.split("\n").map((l) => l.trim()).filter(Boolean)
+    : []
+
   if (parsed.transactions.length === 0) {
     return NextResponse.json(
       { error: "No transactions found — the layout may have changed", warnings: parsed.warnings },
@@ -291,6 +296,19 @@ export async function POST(request: Request) {
     // the review screen to label rows with. Selection state is already staged.
     kinds: classifications.map((c) => c.kind),
     modes: parsed.transactions.map((t) => t.mode),
+    // Opt-in only, and returned solely to the authenticated owner of the
+    // statement — never logged. Diagnosing a layout mismatch without ever
+    // seeing a line of the real text turned into several wrong guesses; this
+    // is the smallest window that avoids repeating that.
+    diagnostics: wantsDiagnostics
+      ? {
+          totalLines: extractedLines.length,
+          head: extractedLines.slice(0, 8),
+          tail: extractedLines.slice(-8),
+          totalsRows: extractedLines.filter((l) => /^\s*Total\s*:/i.test(l)).slice(-3),
+          bfRows: extractedLines.filter((l) => /\bB\/F\b/.test(l)).slice(0, 3),
+        }
+      : undefined,
     // Indices of rows matching an active recurring rule, so the review screen
     // can say why they are unticked rather than leaving it a mystery.
     recurringMatches,

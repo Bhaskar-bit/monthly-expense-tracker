@@ -132,12 +132,29 @@ function groupRecords(text: string): RawRecord[] {
  * carried to the end of the page, so the final occurrence is the statement's
  * closing balance.
  */
-function extractPrintedClosing(text: string): number | null {
+function extractPrintedClosing(text: string, opening: number | null): number | null {
+  if (opening === null) return null;
+
   const rows = [...text.matchAll(/^\s*Total\s*:.*$/gim)].map(m => m[0]);
-  if (rows.length === 0) return null;
-  const figures = rows[rows.length - 1].match(AMOUNT_RE);
-  if (!figures || figures.length === 0) return null;
-  return toNumber(figures[figures.length - 1]);
+
+  // A statement-level totals row carries three figures — deposits, withdrawals
+  // and the balance they produce — and those three must reconcile against the
+  // opening balance. Requiring that proves we found the right row instead of
+  // some other table that happens to start with "Total:". Taking the last row
+  // blindly produced a closing balance of 1011.77 from a row that was nothing
+  // of the sort, and turned a clean parse into a false "rows are missing".
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const figures = rows[i].match(AMOUNT_RE);
+    if (!figures || figures.length < 3) continue;
+
+    const balance = toNumber(figures[figures.length - 1]);
+    const withdrawals = toNumber(figures[figures.length - 2]);
+    const deposits = toNumber(figures[figures.length - 3]);
+
+    if (Math.abs(opening + deposits - withdrawals - balance) < 0.01) return balance;
+  }
+
+  return null;
 }
 
 function extractVpa(narration: string): string | null {
@@ -276,7 +293,7 @@ export function parseIciciStatement(
     transactions,
     openingBalance: opening,
     closingBalance: prevBalance,
-    printedClosingBalance: extractPrintedClosing(text),
+    printedClosingBalance: extractPrintedClosing(text, opening),
     warnings,
   };
 }
