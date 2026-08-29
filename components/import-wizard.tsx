@@ -144,8 +144,15 @@ export function ImportWizard() {
     return "csv"
   }
 
-  /** True when the dedicated ICICI statement pipeline should handle this file. */
-  const isIciciStatement = bank === "ICICI" && !!file && getSourceType(file) === "pdf"
+  /**
+   * Every PDF goes through the statement pipeline, whatever the bank dropdown
+   * says. The legacy /api/import/parse PDF branch cannot open an encrypted
+   * statement at all and fails on Vercel besides, so gating this on the bank
+   * selector only meant a user who left it on "Generic" got the broken path.
+   * A non-ICICI layout now comes back as a clean "no transactions found"
+   * instead of a 500.
+   */
+  const isPdfStatement = !!file && getSourceType(file) === "pdf"
 
   /**
    * ICICI PDF path.
@@ -212,7 +219,7 @@ export function ImportWizard() {
 
   async function handleParse() {
     if (!file) return
-    if (isIciciStatement) return handleStatementParse()
+    if (isPdfStatement) return handleStatementParse()
     setIsParsing(true)
     try {
       const reader = new FileReader()
@@ -403,8 +410,8 @@ export function ImportWizard() {
               <input id="import-file-input" type="file" className="hidden" accept=".csv,.xlsx,.xls,.pdf" onChange={handleFileSelect} />
             </div>
 
-            {/* ICICI e-statement password. Only shown when it can be used. */}
-            {isIciciStatement && (
+            {/* Statement password. Shown for any PDF — leave it blank if the file is not encrypted. */}
+            {isPdfStatement && (
               <div className="space-y-1.5">
                 <label className="text-sm font-medium" htmlFor="statement-password">
                   Statement password
@@ -419,16 +426,18 @@ export function ImportWizard() {
                 />
                 <p className="text-xs text-muted-foreground">
                   ICICI e-statements are encrypted. The password is used to open the PDF and is never stored.
+                  Leave blank if your PDF is not password-protected.
                 </p>
               </div>
             )}
 
-            {isIciciStatement && (
+            {isPdfStatement && (
               <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
-                <p className="font-medium text-foreground">ICICI statement mode</p>
+                <p className="font-medium text-foreground">Statement mode</p>
                 <p className="text-muted-foreground">
                   Transactions are staged for review only — nothing is added to your expenses until you confirm.
-                  Investments and internal transfers arrive unticked.
+                  Investments and internal transfers arrive unticked. Parsing is tuned for ICICI savings
+                  statements; other layouts may not be recognised.
                 </p>
               </div>
             )}

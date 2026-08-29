@@ -163,7 +163,12 @@ async function parsePDF(buffer: Buffer): Promise<RawTransaction[]> {
     const result = await parser.getText()
     text = result.text
   } catch {
-    throw new Error("PDF parsing requires the 'pdf-parse' package. Please use CSV export instead.")
+    // pdf-parse bundles its own pdfjs, which fails to load in the Vercel Node
+    // runtime and cannot open an encrypted statement in any case. The blanket
+    // "requires the package" message this used to throw sent people hunting for
+    // a missing dependency that was installed all along. The wizard now routes
+    // every PDF to /api/import/statement; this path only catches direct callers.
+    throw new Error("PDF statements are handled by /api/import/statement. Upload the PDF through the import wizard.")
   }
 
   if (!text?.trim()) {
