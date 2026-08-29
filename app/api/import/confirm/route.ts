@@ -102,6 +102,43 @@ export async function POST(request: Request) {
         })
 
         created++
+
+        // Teach the classifier what this merchant is, so the next statement
+        // does not ask again. The statement importer checks this table before
+        // any rule, which is what makes the review pile shrink month over
+        // month instead of staying the same size forever.
+        //
+        // Only useful for descriptions that recur. A key carrying a
+        // per-transaction reference number never matches anything again, so
+        // those are skipped rather than filling the table with dead rows.
+        const key = (txn.description || txn.raw_description || "").trim().toLowerCase()
+        if (key && !/\d{6,}/.test(key)) {
+          // There is no unique constraint on (user_id, description), so check
+          // before writing rather than growing a row per confirmation.
+          const { data: known } = await supabase
+            .from("category_training_data")
+            .select("id, category")
+            .eq("user_id", user.id)
+            .eq("description", key)
+            .maybeSingle()
+
+          if (!known) {
+            await supabase.from("category_training_data").insert({
+              user_id: user.id,
+              description: key,
+              category: txn.category,
+              confidence: 1,
+              is_validated: true,
+            })
+          } else if (known.category !== txn.category) {
+            // The latest human decision wins — that is the whole point of
+            // learned mappings outranking the rules.
+            await supabase
+              .from("category_training_data")
+              .update({ category: txn.category, is_validated: true })
+              .eq("id", known.id)
+          }
+        }
       } catch (err) {
         failed++
         errors.push(`${txn.raw_date} ${txn.raw_description}: ${err instanceof Error ? err.message : "unknown error"}`)

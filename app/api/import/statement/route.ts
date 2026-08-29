@@ -273,7 +273,10 @@ export async function POST(request: Request) {
     parsed: parsed.transactions.length,
     autoConfirmable,
     needsReview,
-    duplicates: rows.filter((r) => r.is_duplicate).length,
+    // Recurring matches also set is_duplicate, so count only the rows that
+    // matched an existing expense outright — otherwise the same rows are
+    // reported twice, once under each heading.
+    duplicates: rows.filter((r, i) => r.is_duplicate && !recurringMatches.includes(i)).length,
     openingBalance: parsed.openingBalance,
     closingBalance: parsed.closingBalance,
     integrity,
