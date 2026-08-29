@@ -97,16 +97,19 @@ export const recurringExpenseProcessor = {
     try {
       const fullMonthYear = monthYear.length === 7 ? `${monthYear}-01` : monthYear
 
-      const { data: monthData } = await supabase
+      const { data: monthData, error: monthError } = await supabase
         .from("months")
         .select("id")
         .eq("user_id", userId)
         .eq("month_year", fullMonthYear)
         .single()
 
+      // No month row means nothing can have been created in it yet — that is a
+      // real "does not exist". An error is not: it tells us nothing either way.
+      if (monthError) throw monthError
       if (!monthData) return false
 
-      const { data: expenses } = await supabase
+      const { data: expenses, error: expenseError } = await supabase
         .from("expenses")
         .select("id")
         .eq("month_id", monthData.id)
@@ -115,10 +118,19 @@ export const recurringExpenseProcessor = {
         .eq("description", recurring.description || "")
         .limit(1)
 
+      if (expenseError) throw expenseError
+
       return (expenses?.length || 0) > 0
     } catch (error) {
-      console.error("[v0] Error checking if expense exists:", error)
-      return false
+      // Fail CLOSED. This is the only guard against writing a duplicate
+      // expense, because shouldCreateForMonth returns true for every monthly
+      // rule and never consults last_created_date. Returning false here means
+      // "no expense exists, go ahead and create one", so a transient error —
+      // a network blip, a rate limit — silently duplicated an EMI. Saying
+      // "assume it exists" costs at most a missed entry the user can add by
+      // hand, and a missing row is visible in a way a duplicate one is not.
+      console.error("[v0] Error checking if expense exists, assuming it does:", error)
+      return true
     }
   },
 
