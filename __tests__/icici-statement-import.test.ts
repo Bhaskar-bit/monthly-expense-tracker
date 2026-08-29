@@ -54,6 +54,11 @@ const STATEMENT_ROWS: Row[] = [
   [[200, "OWN SAVINGS ACCOUNT"]],
   [[40, "07-04-2026"], [200, "INF/INFT/SELF ACCOUNT SWEEP"], [470, "5,000.00"], [550, "34,550.00"]],
 
+  // Page break: ICICI reprints the account header and column headings on every
+  // page. These are the SAME account, not a new one.
+  [[40, "Statement of Transactions in Savings Account XXXXXXXX8435 in INR for the period April 01, 2026 - April 30, 2026"]],
+  [[40, "DATE"], [110, "MODE"], [200, "PARTICULARS"], [400, "DEPOSITS"], [470, "WITHDRAWALS"], [550, "BALANCE"]],
+
   [[200, "UBER INDIA SYSTEMS"]],
   [[40, "12-04-2026"], [200, "UPI/512345678902/Pay/uber@icici/ICICI"], [470, "312.50"], [550, "34,237.50"]],
   [[200, "Bank/618365369644/ICI92ca18e187bf44dfb2ee"]],
@@ -276,6 +281,12 @@ describe("multi-account statements", () => {
     expect(sections.map((s) => s.accountLast4)).toEqual(["0401", "8435"])
     expect(sections[0].label).toMatch(/PPF/i)
     expect(sections[1].label).toMatch(/Savings/i)
+
+    // The savings header is reprinted after the page break. That must merge
+    // into one account rather than becoming a second, smaller one — the bug
+    // that cut a 105-row statement down to the 21 rows on its largest page.
+    expect(sections).toHaveLength(2)
+    expect(sections[1].datedLines).toBe(6) // B/F plus five transactions
   })
 })
 

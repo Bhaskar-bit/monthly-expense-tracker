@@ -197,17 +197,33 @@ export function splitAccountSections(text: string): AccountSection[] {
     return [{ label: '', accountLast4: null, body: text, datedLines: countDated(text) }];
   }
 
-  return matches.map((m, i) => {
+  // The header is reprinted at the top of every page, so one account produces
+  // many matches. Merging by account number is the whole point: treating each
+  // occurrence as its own account splits a statement into per-page fragments
+  // and then keeps only the largest, silently discarding most of the rows.
+  const byAccount = new Map<string, AccountSection>();
+
+  matches.forEach((m, i) => {
     const start = m.index!;
     const end = i + 1 < matches.length ? matches[i + 1].index! : undefined;
     const body = text.slice(start, end);
-    return {
-      label: m[1].trim(),
-      accountLast4: m[2],
-      body,
-      datedLines: countDated(body),
-    };
+    const last4 = m[2];
+
+    const existing = byAccount.get(last4);
+    if (existing) {
+      existing.body += '\n' + body;
+      existing.datedLines += countDated(body);
+    } else {
+      byAccount.set(last4, {
+        label: m[1].trim(),
+        accountLast4: last4,
+        body,
+        datedLines: countDated(body),
+      });
+    }
   });
+
+  return [...byAccount.values()];
 }
 
 /**
