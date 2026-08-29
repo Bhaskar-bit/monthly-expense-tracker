@@ -144,44 +144,6 @@ export interface BudgetRuleTrigger {
   is_acknowledged: boolean
 }
 
-// ── Bank Statement Import ──────────────────────────────────────────────────────
-
-export type ImportSourceType = "csv" | "xlsx" | "pdf" | "image"
-export type ImportStatus = "pending" | "confirmed" | "cancelled"
-export type ImportBank =
-  | "HDFC" | "ICICI" | "SBI" | "Axis" | "Kotak"
-  | "PNB" | "BankOfBaroda" | "Canara" | "IndusInd" | "YesBank"
-  | "Generic"
-
-export interface ImportSession {
-  id: string
-  user_id: string
-  source_type: ImportSourceType
-  source_bank: ImportBank | null
-  status: ImportStatus
-  raw_count: number | null
-  confirmed_count: number | null
-  created_at: string
-  updated_at: string
-}
-
-export interface ImportTransaction {
-  id: string
-  session_id: string
-  user_id: string
-  raw_description: string | null
-  raw_amount: number
-  raw_date: string
-  raw_type: "debit" | "credit" | null
-  ai_category: ExpenseCategory | null
-  ai_confidence: number | null
-  user_category: ExpenseCategory | null
-  user_description: string | null
-  expense_source: "savings_account" | "credit_card"
-  is_duplicate: boolean
-  is_selected: boolean
-  created_at: string
-}
 
 export interface InvestmentReturn {
   id: string

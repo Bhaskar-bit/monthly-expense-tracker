@@ -16,7 +16,6 @@ import { RecurringExpensesList } from "@/components/recurring-expenses-list"
 import { MobileNav } from "@/components/mobile-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ErrorBoundary } from "@/components/error-boundary"
-import { ImportWizard } from "@/components/import-wizard"
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
 
 export default async function DashboardPage() {
@@ -58,7 +57,6 @@ export default async function DashboardPage() {
                       <span className="hidden lg:inline">Budgets</span>
                     </Button>
                   </Link>
-                  <ImportWizard />
                   <Link href="/export" aria-label="Export reports">
                     <Button variant="outline" size="sm">
                       <Download className="w-4 h-4 mr-2" aria-hidden="true" />
