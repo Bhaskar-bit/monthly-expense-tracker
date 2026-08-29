@@ -88,10 +88,17 @@ export async function extractStatementText(
 ): Promise<string> {
   const pdfjs = await loadPdfjs();
 
+  // pdfjs TRANSFERS this buffer to its worker rather than copying it, leaving
+  // the caller's array detached with byteLength 0. Anything that retries — a
+  // second password candidate, say — would then hand pdfjs an empty buffer and
+  // get DataCloneError instead of the real answer. Copy so the caller's array
+  // survives the call.
+  const owned = new Uint8Array(data);
+
   // The loading task, not the document proxy, owns destroy() in pdfjs 6 — keep
   // a reference to it so the worker is torn down on every path out of here.
   const task = pdfjs.getDocument({
-    data,
+    data: owned,
     password,
     // Vercel's Node runtime has no system font stack, and text extraction does
     // not need glyphs — only the text layer and its coordinates.
@@ -173,7 +180,11 @@ export async function extractWithCandidates(
   data: Uint8Array,
   candidates: string[]
 ): Promise<string> {
+  const tried = new Set<string>();
+
   for (const pw of candidates) {
+    if (tried.has(pw)) continue;   // a duplicate costs a whole PDF parse
+    tried.add(pw);
     try {
       return await extractStatementText(data, pw);
     } catch (err) {

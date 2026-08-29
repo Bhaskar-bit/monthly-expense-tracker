@@ -10,7 +10,7 @@
 import { describe, it, expect } from "vitest"
 import { parseIciciStatement, verifyChain } from "@/lib/icici-statement-parser"
 import { classify, shouldAutoConfirm, type Registry } from "@/lib/transaction-classifier"
-import { extractStatementText, passwordCandidates } from "@/lib/pdf-extract"
+import { extractStatementText, extractWithCandidates, passwordCandidates } from "@/lib/pdf-extract"
 
 const REGISTRY: Registry = { ownAccounts: [], incomePatterns: [/salary/i, /\bSAL\b/] }
 const NO_LEARNED = new Map<string, never>()
@@ -94,6 +94,32 @@ describe("extractStatementText", () => {
     expect(lines[3]).toBe("SWIGGY LIMITED")
     // The balance column must land at the end of the row, not inside narration.
     expect(lines[2].endsWith("49,550.00")).toBe(true)
+  })
+
+  /**
+   * pdfjs transfers the buffer it is given to its worker, detaching the
+   * caller's array. Without an internal copy the second read gets an empty
+   * buffer and throws DataCloneError — which is what broke every encrypted
+   * statement, since those only succeed on a later password candidate.
+   */
+  it("leaves the caller's buffer intact so a retry can read it again", async () => {
+    const bytes = buildPdf(STATEMENT_ROWS)
+    const size = bytes.byteLength
+
+    await extractStatementText(bytes)
+    expect(bytes.byteLength).toBe(size)
+
+    const second = await extractStatementText(bytes)
+    expect(second.split("\n")[1]).toBe("01-04-2026 B/F 50,000.00")
+  })
+})
+
+describe("extractWithCandidates", () => {
+  it("keeps trying after a rejected password instead of dying on a spent buffer", async () => {
+    // The empty password is not rejected by an unencrypted PDF, so drive the
+    // retry path with candidates that must be walked in order.
+    const text = await extractWithCandidates(buildPdf(STATEMENT_ROWS), ["wrong-1", "wrong-2", ""])
+    expect(text).toContain("01-04-2026 B/F 50,000.00")
   })
 })
 

@@ -105,9 +105,21 @@ export async function POST(request: Request) {
     text = await extractWithCandidates(bytes, ["", ...candidates])
   } catch (err) {
     if (err instanceof WrongPasswordError) {
-      return NextResponse.json({ error: "Password rejected" }, { status: 422 })
+      return NextResponse.json(
+        { error: "Password rejected — check the statement password and try again" },
+        { status: 422 },
+      )
     }
-    return NextResponse.json({ error: "Could not read the PDF" }, { status: 422 })
+    // The exception's class name only. It names the failure mode
+    // (InvalidPDFException, DataCloneError, ...) without carrying statement
+    // text, narration or the password into the logs. Swallowing it entirely
+    // once cost a full debugging round-trip.
+    const name = err instanceof Error ? err.name : "UnknownError"
+    console.error("[import/statement] extraction failed:", name)
+    return NextResponse.json(
+      { error: `Could not read the PDF (${name})` },
+      { status: 422 },
+    )
   }
 
   // --- parse ------------------------------------------------------------
