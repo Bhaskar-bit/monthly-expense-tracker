@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import { parseIciciStatement, verifyChain } from "@/lib/icici-statement-parser"
+import { parseIciciStatement, splitAccountSections, verifyChain } from "@/lib/icici-statement-parser"
 import { classify, shouldAutoConfirm, type Registry } from "@/lib/transaction-classifier"
 import { extractStatementText, extractWithCandidates, passwordCandidates } from "@/lib/pdf-extract"
 
@@ -30,6 +30,16 @@ type Row = Array<[x: number, text: string]>
  *    would otherwise be absorbed into the last transaction.
  */
 const STATEMENT_ROWS: Row[] = [
+  // A PPF section is printed ABOVE the savings account, with its own B/F,
+  // its own running balance and its own totals row. Its single credit is the
+  // far side of the savings account's own transfer out.
+  [[40, "Statement of Transactions in PPF Account XXXXXXXX0401 in INR for the period April 01, 2026 - April 30, 2026"]],
+  [[40, "DATE"], [110, "MODE"], [200, "PARTICULARS"], [400, "DEPOSITS"], [470, "WITHDRAWALS"], [550, "BALANCE"]],
+  [[40, "01-04-2026"], [200, "B/F"], [550, "99,590.00"]],
+  [[40, "02-04-2026"], [200, "FRM SB 055801628435_SR998208067"], [400, "2,500.00"], [550, "1,02,090.00"]],
+  [[250, "Total:"], [400, "2,500.00"], [470, "0.00"], [550, "1,02,090.00"]],
+
+  [[40, "Statement of Transactions in Savings Account XXXXXXXX8435 in INR for the period April 01, 2026 - April 30, 2026"]],
   [[40, "DATE"], [110, "MODE"], [200, "PARTICULARS"], [400, "DEPOSITS"], [470, "WITHDRAWALS"], [550, "BALANCE"]],
   [[40, "01-04-2026"], [200, "B/F"], [550, "50,000.00"]],
 
@@ -110,12 +120,13 @@ describe("extractStatementText", () => {
     const text = await extractStatementText(buildPdf(STATEMENT_ROWS))
     const lines = text.split("\n")
 
-    expect(lines[1]).toBe("01-04-2026 B/F 50,000.00")
+    expect(lines.filter((l) => l === "01-04-2026 B/F 50,000.00")).toHaveLength(1)
     // Payee name sits ABOVE the dated line, as ICICI prints it.
-    expect(lines[2]).toBe("SWIGGY LIMITED")
-    expect(lines[3]).toBe("02-04-2026 UPI/412345678901/Pay/swiggy@ybl/AXIS 450.00 49,550.00")
+    expect(lines).toContain("SWIGGY LIMITED")
+    const swiggyLine = lines.find((l) => l.startsWith("02-04-2026 UPI"))!
+    expect(swiggyLine).toBe("02-04-2026 UPI/412345678901/Pay/swiggy@ybl/AXIS 450.00 49,550.00")
     // The balance column must land at the end of the row, not inside narration.
-    expect(lines[3].endsWith("49,550.00")).toBe(true)
+    expect(swiggyLine.endsWith("49,550.00")).toBe(true)
   })
 
   /**
@@ -132,7 +143,7 @@ describe("extractStatementText", () => {
     expect(bytes.byteLength).toBe(size)
 
     const second = await extractStatementText(bytes)
-    expect(second.split("\n")[1]).toBe("01-04-2026 B/F 50,000.00")
+    expect(second).toContain("01-04-2026 B/F 50,000.00")
   })
 })
 
@@ -150,7 +161,7 @@ describe("parseIciciStatement", () => {
     const text = await extractStatementText(buildPdf(STATEMENT_ROWS))
     const parsed = parseIciciStatement(text)
 
-    expect(parsed.warnings).toEqual([])
+    expect(parsed.warnings.filter((w) => !w.startsWith("Statement covers"))).toEqual([])
     expect(parsed.openingBalance).toBe(50000)
     expect(parsed.closingBalance).toBe(134237.5)
     // B/F and C/F markers are not transactions.
@@ -182,7 +193,7 @@ describe("parseIciciStatement", () => {
 
     expect(parsed.printedClosingBalance).toBe(134237.5)
     expect(parsed.transactions.at(-1)).toMatchObject({ amount: 100000, direction: "credit" })
-    expect(parsed.warnings).toEqual([])
+    expect(parsed.warnings.filter((w) => !w.startsWith("Statement covers"))).toEqual([])
   })
 
   it("takes the payee name from above the dated line, not the wrapped reference", async () => {
@@ -223,6 +234,48 @@ describe("parseIciciStatement", () => {
     // The balance chain wins: it is arithmetic, not layout.
     expect(parsed.transactions[0].amount).toBe(250)
     expect(parsed.warnings.some((w) => w.includes("flagged for review"))).toBe(true)
+  })
+})
+
+describe("multi-account statements", () => {
+  /**
+   * The failure this guards against: a PPF section printed above the savings
+   * account made the parser open at the PPF's B/F (99,590) and then treat the
+   * gap between the PPF's closing balance and the savings account's first row
+   * as a transaction. It also double-counted the PPF credit, which is the far
+   * side of a transfer already recorded on the savings side.
+   */
+  it("reads only the savings account, not the PPF section above it", async () => {
+    const text = await extractStatementText(buildPdf(STATEMENT_ROWS))
+    const parsed = parseIciciStatement(text)
+
+    expect(parsed.accountLast4).toBe("8435")
+    expect(parsed.openingBalance).toBe(50000)
+    expect(parsed.transactions).toHaveLength(5)
+
+    // The PPF credit must not appear, and no row may carry the seam between
+    // the two accounts' balances.
+    expect(parsed.transactions.some((t) => t.narration.includes("FRM SB"))).toBe(false)
+    expect(parsed.transactions.some((t) => t.amount === 52090)).toBe(false)
+  })
+
+  it("says which accounts it skipped rather than silently dropping them", async () => {
+    const text = await extractStatementText(buildPdf(STATEMENT_ROWS))
+    const parsed = parseIciciStatement(text)
+
+    const notice = parsed.warnings.find((w) => w.startsWith("Statement covers"))
+    expect(notice).toBeDefined()
+    expect(notice).toContain("PPF")
+    expect(notice).toContain("0401")
+  })
+
+  it("splits each account block out with its own row count", async () => {
+    const text = await extractStatementText(buildPdf(STATEMENT_ROWS))
+    const sections = splitAccountSections(text)
+
+    expect(sections.map((s) => s.accountLast4)).toEqual(["0401", "8435"])
+    expect(sections[0].label).toMatch(/PPF/i)
+    expect(sections[1].label).toMatch(/Savings/i)
   })
 })
 

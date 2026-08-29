@@ -163,6 +163,66 @@ function extractVpa(narration: string): string | null {
 }
 
 /**
+ * One "Statement of Transactions in ... Account ..." block.
+ *
+ * A single ICICI PDF commonly carries several: a PPF account is printed above
+ * the savings account, each with its own B/F, its own running balance and its
+ * own totals row.
+ */
+export interface AccountSection {
+  label: string;              // 'Savings', 'PPF', ...
+  accountLast4: string | null;
+  body: string;
+  datedLines: number;
+}
+
+const SECTION_RE =
+  /Statement of Transactions in\s+(.+?)\s+(?:Account|A\/c)\s+X*(\d{4})\b/gi;
+
+/**
+ * Split the text into per-account sections.
+ *
+ * Parsing a multi-account statement as one chain is not a small error: the
+ * balance runs off the end of one account and into the first row of the next,
+ * so that row's movement is the gap between two unrelated balances. It also
+ * double-counts, since a PPF credit is the far side of a savings debit that is
+ * already in the statement.
+ */
+export function splitAccountSections(text: string): AccountSection[] {
+  const matches = [...text.matchAll(SECTION_RE)];
+  const countDated = (s: string) =>
+    s.split(/\r?\n/).filter(l => DATE_RE.test(l.trim())).length;
+
+  if (matches.length === 0) {
+    return [{ label: '', accountLast4: null, body: text, datedLines: countDated(text) }];
+  }
+
+  return matches.map((m, i) => {
+    const start = m.index!;
+    const end = i + 1 < matches.length ? matches[i + 1].index! : undefined;
+    const body = text.slice(start, end);
+    return {
+      label: m[1].trim(),
+      accountLast4: m[2],
+      body,
+      datedLines: countDated(body),
+    };
+  });
+}
+
+/**
+ * The account this tracker is about. Savings is where spending happens; a PPF
+ * or deposit section holds the other half of transfers already recorded on the
+ * savings side. Falls back to the busiest section when nothing is labelled
+ * savings, since that is where the transactions are.
+ */
+function selectSection(sections: AccountSection[]): AccountSection {
+  const savings = sections.filter(s => /saving/i.test(s.label));
+  const pool = savings.length > 0 ? savings : sections;
+  return pool.reduce((best, s) => (s.datedLines > best.datedLines ? s : best), pool[0]);
+}
+
+/**
  * Parse an ICICI statement from extracted PDF text.
  *
  * @param text            raw text from the PDF
@@ -175,6 +235,23 @@ export function parseIciciStatement(
   openingBalance?: number
 ): ParseResult {
   const warnings: string[] = [];
+
+  const sections = splitAccountSections(text);
+  const section = selectSection(sections);
+  const ignored = sections.filter(s => s !== section && s.datedLines > 0);
+
+  if (ignored.length > 0) {
+    warnings.push(
+      `Statement covers ${sections.length} accounts. Read ${
+        section.label || 'the busiest section'
+      } A/c ...${section.accountLast4 ?? '????'}; ignored ${ignored
+        .map(s => `${s.label} A/c ...${s.accountLast4} (${s.datedLines} rows)`)
+        .join(', ')}. Transfers between your own accounts appear once, on the savings side.`
+    );
+  }
+
+  // Everything below reads the selected account only.
+  text = section.body;
   const records = groupRecords(text);
   const transactions: ParsedTxn[] = [];
 
@@ -291,6 +368,7 @@ export function parseIciciStatement(
 
   return {
     transactions,
+    accountLast4: section.accountLast4,
     openingBalance: opening,
     closingBalance: prevBalance,
     printedClosingBalance: extractPrintedClosing(text, opening),
