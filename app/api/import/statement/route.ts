@@ -115,7 +115,12 @@ export async function POST(request: Request) {
     // text, narration or the password into the logs. Swallowing it entirely
     // once cost a full debugging round-trip.
     const name = err instanceof Error ? err.name : "UnknownError"
-    console.error("[import/statement] extraction failed:", name)
+    // The message too, server-side only. pdfjs messages describe the failure
+    // mode ("Setting up fake worker failed", "Invalid PDF structure") and never
+    // carry document text, so this stays within the no-statement-data rule —
+    // and `name` alone came back as a useless bare "Error".
+    const detail = err instanceof Error ? err.message : ""
+    console.error("[import/statement] extraction failed:", name, "|", detail.slice(0, 200))
     return NextResponse.json(
       { error: `Could not read the PDF (${name})` },
       { status: 422 },

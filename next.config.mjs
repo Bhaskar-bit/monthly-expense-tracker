@@ -25,6 +25,14 @@ const nextConfig = {
   // external means the Node runtime loads it as published, which is the only
   // way the legacy build works on Vercel.
   serverExternalPackages: ["pdfjs-dist"],
+  // pdfjs reaches its worker through a dynamic import that file tracing cannot
+  // see, so only pdf.mjs was being uploaded. Locally that is invisible — the
+  // whole node_modules tree is on disk — but on Vercel the worker file simply
+  // is not there, and getDocument fails with a bare "Setting up fake worker
+  // failed". Force the build directory into the trace for this route.
+  outputFileTracingIncludes: {
+    "/api/import/statement": ["./node_modules/pdfjs-dist/legacy/build/*.mjs"],
+  },
   turbopack: {
     root: __dirname,
   },
