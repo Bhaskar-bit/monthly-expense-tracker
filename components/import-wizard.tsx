@@ -33,6 +33,8 @@ interface ReviewRow extends CategorizedTransaction {
   selected: boolean
   kind?: TxnKind
   is_duplicate?: boolean
+  /** Matches an active recurring rule this app already logs on its own. */
+  isRecurring?: boolean
 }
 
 /** Summary returned by the ICICI statement route, shown above the review table. */
@@ -46,6 +48,7 @@ interface StatementSummary {
   closingBalance: number | null
   integrity: { ok: boolean; discrepancy: number; message: string }
   warnings: string[]
+  recurring?: number
 }
 
 interface StagedRow {
@@ -179,6 +182,7 @@ export function ImportWizard() {
       if (!staged.ok) throw new Error(stagedData.error ?? "Could not load staged transactions")
 
       const kinds: TxnKind[] = data.kinds ?? []
+      const recurringIdx = new Set<number>(data.recurringMatches ?? [])
       setSummary(data as StatementSummary)
       setRows(
         (stagedData.transactions as StagedRow[]).map((t, i) => ({
@@ -196,6 +200,7 @@ export function ImportWizard() {
           selected: t.is_selected,
           kind: kinds[i],
           is_duplicate: t.is_duplicate,
+          isRecurring: recurringIdx.has(i),
         })),
       )
       setStep("review")
@@ -469,6 +474,11 @@ export function ImportWizard() {
                   {summary.duplicates > 0 && (
                     <span className="text-yellow-600">{summary.duplicates} look like duplicates</span>
                   )}
+                  {!!summary.recurring && summary.recurring > 0 && (
+                    <span className="text-blue-600">
+                      {summary.recurring} already logged as recurring
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground">
                   <span>Opening ₹{(summary.openingBalance ?? 0).toLocaleString("en-IN")}</span>
@@ -546,7 +556,11 @@ export function ImportWizard() {
                           {row.kind && row.kind !== "EXPENSE" && (
                             <span className="text-[10px] text-yellow-600">{KIND_LABEL[row.kind]}</span>
                           )}
-                          {row.is_duplicate && <span className="text-[10px] text-red-600">Possible duplicate</span>}
+                          {row.isRecurring ? (
+                            <span className="text-[10px] text-blue-600">Recurring — already logged</span>
+                          ) : (
+                            row.is_duplicate && <span className="text-[10px] text-red-600">Possible duplicate</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-3 py-1.5 max-w-xs">

@@ -180,6 +180,27 @@ export async function POST(request: Request) {
     ),
   )
 
+  // --- recurring expenses, which this app already logs by itself ---------
+  //
+  // EMIs and fixed expenses are created automatically each month from
+  // recurring_expenses, so importing them from the statement double-counts
+  // them. The exact-date check above misses these routinely: the auto-created
+  // entry is dated from the rule's day_of_month, while the statement carries
+  // the bank's posting date, and those differ whenever the scheduled day lands
+  // on a weekend or the bank posts late. Matching on amount instead of date
+  // survives that drift.
+  const { data: recurring } = await supabase
+    .from("recurring_expenses")
+    .select("amount, description, category, day_of_month")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+
+  const recurringAmounts = new Map<string, { description: string | null; category: string }>(
+    ((recurring ?? []) as Array<{ amount: number; description: string | null; category: string }>).map(
+      (r) => [Number(r.amount).toFixed(2), { description: r.description, category: r.category }] as const,
+    ),
+  )
+
   // --- session ----------------------------------------------------------
   const { data: session, error: sessErr } = await supabase
     .from("import_sessions")
@@ -203,10 +224,21 @@ export async function POST(request: Request) {
 
   const classifications = parsed.transactions.map((txn) => classify(txn, REGISTRY, learned))
 
+  const recurringMatches: number[] = []
+
   const rows = parsed.transactions.map((txn, i) => {
     const c = classifications[i]
-    const dupKey = `${txn.date}|${txn.amount.toFixed(2)}`
-    const isDuplicate = existingKeys.has(dupKey)
+    const amountKey = txn.amount.toFixed(2)
+    const dupKey = `${txn.date}|${amountKey}`
+
+    // A debit whose amount equals an active recurring rule is almost certainly
+    // the charge this app already logged for you. Credits are excluded: a
+    // refund that happens to equal an EMI is not that EMI.
+    const recurringMatch =
+      txn.direction === "debit" ? (recurringAmounts.get(amountKey) ?? null) : null
+    if (recurringMatch) recurringMatches.push(i)
+
+    const isDuplicate = existingKeys.has(dupKey) || !!recurringMatch
     const auto = shouldAutoConfirm(txn, c) && integrity.ok && !isDuplicate
 
     if (auto) autoConfirmable++
@@ -250,5 +282,9 @@ export async function POST(request: Request) {
     // the review screen to label rows with. Selection state is already staged.
     kinds: classifications.map((c) => c.kind),
     modes: parsed.transactions.map((t) => t.mode),
+    // Indices of rows matching an active recurring rule, so the review screen
+    // can say why they are unticked rather than leaving it a mystery.
+    recurringMatches,
+    recurring: recurringMatches.length,
   })
 }
