@@ -100,27 +100,43 @@ function groupRecords(text: string): RawRecord[] {
   const lines = text
     .split(/\r?\n/)
     .map(l => l.trim())
-    .filter(Boolean)
-    .filter(l => !NOISE_RE.test(l));
+    .filter(Boolean);
 
   const records: RawRecord[] = [];
   let current: RawRecord | null = null;
+  // The last line that could be a payee name. Tracked separately because the
+  // name sits above the dated line, and page furniture may sit between them.
+  let previousContent: string | null = null;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  for (const line of lines) {
+    if (NOISE_RE.test(line)) {
+      // Page furniture CLOSES the open record rather than merely being skipped.
+      // The totals row ends the transaction table, and everything after it is
+      // footer — registered office, CIN, notices. Those carry no date, so
+      // without this they are appended to the last transaction, and any
+      // currency-shaped number among them is then read as its balance.
+      if (current) {
+        records.push(current);
+        current = null;
+      }
+      previousContent = null;
+      continue;
+    }
+
     if (DATE_RE.test(line)) {
       if (current) records.push(current);
-      const previous = lines[i - 1];
       current = {
         lines: [line],
-        merchant: previous && looksLikeName(previous)
-          ? previous.replace(/\s+/g, ' ').trim()
+        merchant: previousContent && looksLikeName(previousContent)
+          ? previousContent.replace(/\s+/g, ' ').trim()
           : null,
       };
     } else if (current) {
       current.lines.push(line);
     }
     // Lines before the first date are header/branding — dropped.
+
+    previousContent = line;
   }
   if (current) records.push(current);
   return records;
@@ -165,21 +181,15 @@ function extractPrintedClosing(text: string, opening: number | null): number | n
 
   const rows = [...text.matchAll(/^\s*Total\s*:.*$/gim)].map(m => m[0]);
 
-  // A statement-level totals row carries three figures — deposits, withdrawals
-  // and the balance they produce — and those three must reconcile against the
-  // opening balance. Requiring that proves we found the right row instead of
-  // some other table that happens to start with "Total:". Taking the last row
-  // blindly produced a closing balance of 1011.77 from a row that was nothing
-  // of the sort, and turned a clean parse into a false "rows are missing".
+  // Every page carries its own totals row, and the figures are that page's
+  // deposits and withdrawals — not running totals. So the last row's balance is
+  // the closing balance, and requiring the three figures to reconcile against
+  // the OPENING balance was wrong: only page one ever satisfies it, which is
+  // how the check ended up comparing against page one's 44,800.49.
   for (let i = rows.length - 1; i >= 0; i--) {
     const figures = rows[i].match(AMOUNT_RE);
     if (!figures || figures.length < 3) continue;
-
-    const balance = toNumber(figures[figures.length - 1]);
-    const withdrawals = toNumber(figures[figures.length - 2]);
-    const deposits = toNumber(figures[figures.length - 3]);
-
-    if (Math.abs(opening + deposits - withdrawals - balance) < 0.01) return balance;
+    return toNumber(figures[figures.length - 1]);
   }
 
   return null;

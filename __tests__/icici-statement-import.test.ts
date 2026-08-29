@@ -68,6 +68,14 @@ const STATEMENT_ROWS: Row[] = [
   [[40, "30-04-2026"], [200, "ACH/SALARY CREDIT ACME LTD"], [400, "1,00,000.00"], [550, "1,34,237.50"]],
 
   [[250, "Total:"], [400, "1,00,000.00"], [470, "15,762.50"], [550, "1,34,237.50"]],
+
+  // Page footer. Carries no date, so before the totals row was made a record
+  // terminator all of this was appended to the final transaction — and the
+  // "10.00" below was then read as that transaction's closing balance.
+  [[40, "Registered Office: ICICI Bank Tower, Old Padra Road, Vadodara. Pin - 390 007."]],
+  [[40, "Minimum average balance Rs 10.00 applies to this account category."]],
+  [[40, "CIN : L65190GJ1994PLC021012"]],
+  [[40, "Customers are requested to immediately notify the Bank of any error(s)."]],
 ]
 
 // ── minimal PDF writer ────────────────────────────────────────────────────────
@@ -239,6 +247,34 @@ describe("parseIciciStatement", () => {
     // The balance chain wins: it is arithmetic, not layout.
     expect(parsed.transactions[0].amount).toBe(250)
     expect(parsed.warnings.some((w) => w.includes("flagged for review"))).toBe(true)
+  })
+})
+
+describe("page footer", () => {
+  /**
+   * The totals row ends the transaction table. Everything after it — registered
+   * office, CIN, notices — carries no date, so it used to be appended to the
+   * last transaction, and any currency-shaped number in that footer was read as
+   * the closing balance. A real statement ended a 104-row import at a closing
+   * balance of 10.
+   */
+  it("does not fold footer text into the last transaction", async () => {
+    const text = await extractStatementText(buildPdf(STATEMENT_ROWS))
+    const parsed = parseIciciStatement(text)
+
+    expect(parsed.closingBalance).toBe(134237.5)
+
+    const last = parsed.transactions[parsed.transactions.length - 1]
+    expect(last.balanceAfter).toBe(134237.5)
+    expect(last.narration).not.toMatch(/Registered Office|CIN|Minimum average/)
+  })
+
+  it("takes the closing balance from the last page's totals row", async () => {
+    const text = await extractStatementText(buildPdf(STATEMENT_ROWS))
+    const parsed = parseIciciStatement(text)
+
+    expect(parsed.printedClosingBalance).toBe(134237.5)
+    expect(verifyChain(parsed, parsed.printedClosingBalance!).ok).toBe(true)
   })
 })
 
