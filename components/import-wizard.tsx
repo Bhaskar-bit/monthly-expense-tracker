@@ -49,6 +49,13 @@ interface StatementSummary {
   integrity: { ok: boolean; discrepancy: number; message: string }
   warnings: string[]
   recurring?: number
+  diagnostics?: {
+    totalLines: number
+    head: string[]
+    tail: string[]
+    totalsRows: string[]
+    bfRows: string[]
+  }
 }
 
 interface StagedRow {
@@ -106,6 +113,7 @@ export function ImportWizard() {
   // ICICI e-statements are always encrypted; the password never leaves this form.
   const [pdfPassword, setPdfPassword] = useState("")
   const [summary, setSummary] = useState<StatementSummary | null>(null)
+  const [diagnose, setDiagnose] = useState(false)
 
   // Review step state
   const [rows, setRows] = useState<ReviewRow[]>([])
@@ -123,6 +131,7 @@ export function ImportWizard() {
     setImportResult(null)
     setPdfPassword("")
     setSummary(null)
+    setDiagnose(false)
   }
 
   // ── Step 1: Upload & Parse ──────────────────────────────────────────────────
@@ -172,6 +181,7 @@ export function ImportWizard() {
       const body = new FormData()
       body.append("file", file)
       if (pdfPassword) body.append("password", pdfPassword)
+      if (diagnose) body.append("diagnose", "1")
 
       const res = await fetch("/api/import/statement", { method: "POST", body })
       const data = await res.json()
@@ -437,6 +447,21 @@ export function ImportWizard() {
             )}
 
             {isPdfStatement && (
+              <label className="flex items-start gap-2 text-xs cursor-pointer">
+                <Checkbox
+                  checked={diagnose}
+                  onCheckedChange={(c: boolean | "indeterminate") => setDiagnose(!!c)}
+                  className="mt-0.5"
+                />
+                <span className="text-muted-foreground">
+                  <span className="font-medium text-foreground">Show extraction details</span> — returns the
+                  first and last lines the parser read out of the PDF. Useful when the totals look wrong.
+                  Shown only to you and never stored.
+                </span>
+              </label>
+            )}
+
+            {isPdfStatement && (
               <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
                 <p className="font-medium text-foreground">Statement mode</p>
                 <p className="text-muted-foreground">
@@ -487,6 +512,29 @@ export function ImportWizard() {
                 <p className={summary.integrity.ok ? "text-muted-foreground" : "text-red-600 font-medium"}>
                   {summary.integrity.message}
                 </p>
+                {summary.diagnostics && (
+                  <details className="text-muted-foreground">
+                    <summary className="cursor-pointer text-blue-600">
+                      Extraction details ({summary.diagnostics.totalLines} lines read)
+                    </summary>
+                    <div className="mt-1 space-y-2">
+                      {([
+                        ["B/F rows", summary.diagnostics.bfRows],
+                        ["Totals rows (last 3)", summary.diagnostics.totalsRows],
+                        ["First 8 lines", summary.diagnostics.head],
+                        ["Last 8 lines", summary.diagnostics.tail],
+                      ] as const).map(([label, lines]) => (
+                        <div key={label}>
+                          <p className="font-medium text-foreground">{label}</p>
+                          <pre className="mt-0.5 overflow-x-auto rounded bg-muted/60 p-2 text-[10px] leading-relaxed">
+                            {lines.length > 0 ? lines.join(String.fromCharCode(10)) : "(none)"}
+                          </pre>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+
                 {summary.warnings.length > 0 && (
                   <details className="text-muted-foreground">
                     <summary className="cursor-pointer text-yellow-600">

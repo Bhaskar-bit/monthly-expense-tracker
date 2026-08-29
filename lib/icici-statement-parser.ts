@@ -132,6 +132,34 @@ function groupRecords(text: string): RawRecord[] {
  * carried to the end of the page, so the final occurrence is the statement's
  * closing balance.
  */
+/**
+ * The account balance printed in the STATEMENT SUMMARY table at the top of the
+ * PDF ("Savings A/c XXXXXXXX8435 ... 1,011.77 ... as on July 31, 2026").
+ *
+ * This is the authoritative closing balance for the account, and unlike the
+ * per-page totals rows there is exactly one of them. Preferred over anything
+ * derived from the transaction table.
+ */
+function extractSummaryBalance(fullText: string, last4: string | null): number | null {
+  if (!last4) return null;
+
+  const accountRow = new RegExp(`A/c\\s+X*${last4}\\b(.*)$`, 'im');
+
+  for (const line of fullText.split(/\r?\n/)) {
+    // The section header names the account too, but carries a period rather
+    // than a balance.
+    if (/Statement of Transactions/i.test(line)) continue;
+
+    const m = line.match(accountRow);
+    if (!m) continue;
+
+    const figures = m[1].match(AMOUNT_RE);
+    if (figures && figures.length > 0) return toNumber(figures[0]);
+  }
+
+  return null;
+}
+
 function extractPrintedClosing(text: string, opening: number | null): number | null {
   if (opening === null) return null;
 
@@ -266,7 +294,9 @@ export function parseIciciStatement(
     );
   }
 
-  // Everything below reads the selected account only.
+  // Everything below reads the selected account only. The summary table at
+  // the top of the PDF sits outside every section, so keep the full text too.
+  const fullText = text;
   text = section.body;
   const records = groupRecords(text);
   const transactions: ParsedTxn[] = [];
@@ -387,7 +417,12 @@ export function parseIciciStatement(
     accountLast4: section.accountLast4,
     openingBalance: opening,
     closingBalance: prevBalance,
-    printedClosingBalance: extractPrintedClosing(text, opening),
+    // The summary table is the account's own closing balance and there is
+    // exactly one of it. Per-page totals rows are the fallback, and only
+    // page one's reconciles against the opening balance anyway.
+    printedClosingBalance:
+      extractSummaryBalance(fullText, section.accountLast4) ??
+      extractPrintedClosing(text, opening),
     warnings,
   };
 }
